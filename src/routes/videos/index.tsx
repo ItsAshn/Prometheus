@@ -9,7 +9,10 @@ export default component$(() => {
       <ThemeToggle />
       <div class="site-container">
         <header class="site-header">
-          <h1>🎬 Video Library</h1>
+          <div class="header-brand">
+            <h1>🎬 Video Library</h1>
+            <p class="header-tagline">Self-Hosted Platform</p>
+          </div>
           <div class="site-nav">
             <a href="/" class="nav-link">
               ← Home
@@ -22,12 +25,29 @@ export default component$(() => {
 
         <main class="site-content">
           <div class="videos-intro">
-            <h2>Watch Our Videos</h2>
-            <p>Enjoy high-quality streaming with adaptive bitrate delivery</p>
+            <h2>🎬 Video Collection</h2>
+            <p>
+              Enjoy high-quality streaming with adaptive bitrate delivery. All
+              videos are automatically optimized for your device and connection.
+            </p>
           </div>
 
           <VideoList isAdmin={false} />
         </main>
+
+        <footer class="videos-footer">
+          <div class="footer-content">
+            <p>Self-Hosted Video Platform</p>
+            <div class="footer-links">
+              <a href="/" class="footer-link">
+                ← Back to Home
+              </a>
+              <a href="/admin" class="footer-link">
+                Admin Panel
+              </a>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

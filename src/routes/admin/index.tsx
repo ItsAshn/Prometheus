@@ -11,11 +11,11 @@ export default component$(() => {
 });
 
 export const head: DocumentHead = {
-  title: "Admin Login - Your Self-Hosted App",
+  title: "Admin Login - Video Platform",
   meta: [
     {
       name: "description",
-      content: "Admin login for self-hosted application",
+      content: "Admin login for self-hosted video platform",
     },
     {
       name: "robots",

@@ -149,13 +149,19 @@ export default component$(() => {
     <div class="public-site">
       <ThemeToggle />
       <header class="site-header">
-        <h1>{channelName}</h1>
+        <div class="header-brand">
+          <h1>{channelName}</h1>
+          <p class="header-tagline">Self-Hosted Video Platform</p>
+        </div>
         <nav class="site-nav">
+          <a href="/videos" class="nav-link">
+            Videos
+          </a>
           {authStore.isLoading ? (
             <div class="auth-loading">Loading...</div>
           ) : authStore.isAuthenticated ? (
             <div class="admin-status">
-              <span class="admin-welcome">🔧 Admin: {authStore.username}</span>
+              <span class="admin-welcome">Admin: {authStore.username}</span>
               <a href="/admin" class="admin-link">
                 Dashboard
               </a>
@@ -173,24 +179,43 @@ export default component$(() => {
 
       <main class="site-content">
         <section class="hero">
-          <h2>{channelName}</h2>
-          <p>{channelDescription}</p>
+          <div class="hero-content">
+            <h2>{channelName}</h2>
+            <p class="hero-description">{channelDescription}</p>
+            <div class="hero-features">
+              <span class="feature-tag">🚫 Ad-Free</span>
+              <span class="feature-tag">🔒 Private</span>
+              <span class="feature-tag">⚡ Fast Streaming</span>
+              <span class="feature-tag">📱 Mobile Ready</span>
+            </div>
+            <div class="hero-actions">
+              <a href="/videos" class="cta-primary">
+                📺 Browse Videos
+              </a>
+              {!authStore.isAuthenticated && (
+                <a href="/admin" class="cta-secondary">
+                  🔧 Admin Access
+                </a>
+              )}
+            </div>
+          </div>
+
           {authStore.isAuthenticated && (
             <div class="admin-notice">
               <h3>🔓 Administrator Access Active</h3>
               <p>
-                Welcome back, <strong>{authStore.username}</strong>!
-              </p>
-              <p>
-                You are currently logged in as an administrator and have full
-                access to the system.
+                Welcome back, <strong>{authStore.username}</strong>! You have
+                full control over your video platform.
               </p>
               <div class="admin-actions">
                 <a href="/admin" class="admin-action-btn">
-                  🎛️ Open Admin Dashboard
+                  🎛️ Dashboard
+                </a>
+                <a href="/admin/videos" class="admin-action-btn">
+                  📹 Manage Videos
                 </a>
                 <a href="/admin/config" class="admin-action-btn">
-                  🎨 Site Configuration
+                  ⚙️ Settings
                 </a>
                 <button onClick$={handleLogout} class="logout-action-btn">
                   🚪 Logout
@@ -201,56 +226,114 @@ export default component$(() => {
         </section>
 
         <section class="features">
+          <div class="section-header">
+            <h3>Platform Features</h3>
+            <p>
+              Professional video hosting with complete control over your content
+            </p>
+          </div>
+
           <div class="feature-grid">
             <div class="feature-card">
-              <h3>🎬 Video Library</h3>
-              <p>Watch videos with high-quality HLS streaming</p>
-              <p class="feature-action">
-                <a href="/videos" class="feature-link">
-                  → Browse Videos
-                </a>
+              <div class="feature-icon">🎬</div>
+              <h4>HLS Streaming</h4>
+              <p>
+                Automatic video conversion for adaptive quality streaming across
+                all devices
+              </p>
+              <a href="/videos" class="feature-link">
+                Browse Library →
+              </a>
+            </div>
+
+            <div class="feature-card">
+              <div class="feature-icon">📤</div>
+              <h4>Easy Upload</h4>
+              <p>
+                Drag and drop video files up to 5GB. Supports multiple formats
+                including MP4, AVI, MOV
               </p>
             </div>
 
             <div class="feature-card">
-              <h3>🌐 Public Access</h3>
-              <p>This page is accessible to everyone on the internet</p>
+              <div class="feature-icon">🔐</div>
+              <h4>Secure Access</h4>
+              <p>
+                Protected admin area with JWT authentication and encrypted
+                session management
+              </p>
             </div>
 
             <div class="feature-card">
-              <h3>🔒 Secure Admin</h3>
-              <p>Admin area is protected and accessible via /admin route</p>
-              {authStore.isAuthenticated && (
-                <p class="admin-access">
-                  <a href="/admin" class="feature-admin-link">
-                    → Go to Admin Dashboard
-                  </a>
-                </p>
-              )}
+              <div class="feature-icon">🌐</div>
+              <h4>Universal Playback</h4>
+              <p>
+                Works on all modern browsers and devices with responsive design
+              </p>
             </div>
 
             <div class="feature-card">
-              <h3>🐳 Docker Ready</h3>
-              <p>Configured through environment variables in Docker Compose</p>
+              <div class="feature-icon">⚡</div>
+              <h4>Fast & Clean</h4>
+              <p>
+                Lightweight interface focused on your content without ads or
+                distractions
+              </p>
+            </div>
+
+            <div class="feature-card">
+              <div class="feature-icon">🐳</div>
+              <h4>Easy Deployment</h4>
+              <p>
+                Docker ready for simple setup and environment-based
+                configuration
+              </p>
             </div>
           </div>
         </section>
       </main>
 
       <footer class="site-footer">
-        <p>&copy; 2025 {channelName}</p>
+        <div class="footer-content">
+          <div class="footer-brand">
+            <h4>{channelName}</h4>
+            <p>Self-hosted video platform</p>
+          </div>
+          <div class="footer-links">
+            <a href="/videos">Video Library</a>
+            <a
+              href="https://github.com/ItsAshn/Prometheus"
+              target="_blank"
+              rel="noopener"
+            >
+              Open Source
+            </a>
+            {authStore.isAuthenticated && <a href="/admin">Admin Panel</a>}
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2025 {channelName}</p>
+        </div>
       </footer>
     </div>
   );
 });
 
 export const head: DocumentHead = {
-  title: "Your Video Channel",
+  title: "Video Channel - Self-Hosted Platform",
   meta: [
     {
       name: "description",
       content:
-        "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.",
+        "Watch videos on my self-hosted streaming platform. High-quality HLS streaming with no ads and complete privacy.",
+    },
+    {
+      name: "keywords",
+      content: "video, streaming, self-hosted, HLS, video platform, ad-free",
+    },
+    {
+      name: "viewport",
+      content: "width=device-width, initial-scale=1.0",
     },
   ],
 };
