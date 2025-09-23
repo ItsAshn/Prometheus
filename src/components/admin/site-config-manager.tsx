@@ -5,6 +5,7 @@ interface SiteConfig {
   channelName: string;
   channelDescription: string;
   customCss?: string;
+  selectedTemplate?: string;
   lastUpdated: string;
 }
 
@@ -28,6 +29,7 @@ export const SiteConfigManager = component$(() => {
   const channelName = useSignal("");
   const channelDescription = useSignal("");
   const customCss = useSignal("");
+  const selectedTemplate = useSignal("retro");
 
   // Server function to load site configuration
   const loadSiteConfig = server$(async function () {
@@ -55,6 +57,7 @@ export const SiteConfigManager = component$(() => {
     channelName: string;
     channelDescription: string;
     customCss: string;
+    selectedTemplate: string;
   }) {
     try {
       const response = await fetch(`${this.url.origin}/api/admin/site-config`, {
@@ -106,6 +109,33 @@ export const SiteConfigManager = component$(() => {
     }
   });
 
+  // Server function to apply template
+  const applyTemplate = server$(async function (templateName: string) {
+    try {
+      const response = await fetch(`${this.url.origin}/api/admin/template`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Cookie: this.request.headers.get("cookie") || "",
+        },
+        body: JSON.stringify({ templateName }),
+      });
+
+      if (response.ok) {
+        return { success: true };
+      }
+
+      const error = await response.json();
+      return {
+        success: false,
+        error: error.message || "Failed to apply template",
+      };
+    } catch (error) {
+      console.error("Error applying template:", error);
+      return { success: false, error: "Network error" };
+    }
+  });
+
   // Load configuration on component mount
   useTask$(async () => {
     const result = await loadSiteConfig();
@@ -114,6 +144,7 @@ export const SiteConfigManager = component$(() => {
       channelName.value = result.config.channelName;
       channelDescription.value = result.config.channelDescription;
       customCss.value = result.config.customCss || "";
+      selectedTemplate.value = result.config.selectedTemplate || "retro";
     } else {
       store.error = result.error || "Failed to load configuration";
     }
@@ -136,6 +167,7 @@ export const SiteConfigManager = component$(() => {
         channelName: channelName.value.trim(),
         channelDescription: channelDescription.value.trim(),
         customCss: customCss.value,
+        selectedTemplate: selectedTemplate.value,
       };
 
       const result = await saveSiteConfig(config);
@@ -171,6 +203,29 @@ export const SiteConfigManager = component$(() => {
       }
     } catch {
       store.error = "Failed to apply CSS";
+    } finally {
+      store.isSaving = false;
+    }
+  });
+
+  const handleTemplateChange = $(async (templateName: string) => {
+    selectedTemplate.value = templateName;
+    store.error = "";
+    store.successMessage = "";
+    store.isSaving = true;
+
+    try {
+      const result = await applyTemplate(templateName);
+
+      if (result.success) {
+        store.successMessage = `${templateName.charAt(0).toUpperCase() + templateName.slice(1)} theme applied successfully! Changes will be visible on page refresh.`;
+        // Save the template selection in config
+        await handleSaveConfig();
+      } else {
+        store.error = result.error || "Failed to apply template";
+      }
+    } catch {
+      store.error = "Failed to apply template";
     } finally {
       store.isSaving = false;
     }
@@ -250,6 +305,65 @@ export const SiteConfigManager = component$(() => {
       </div>
 
       <div class="admin-card">
+        <h3>🎨 Theme Templates</h3>
+        <p>Choose from our predefined themes for quick styling changes.</p>
+
+        <div class="form-group">
+          <label>Select Theme</label>
+          <div class="template-grid">
+            <div
+              class={`template-option ${selectedTemplate.value === "retro" ? "selected" : ""}`}
+            >
+              <div class="template-preview retro-preview">
+                <div class="preview-header"></div>
+                <div class="preview-content">
+                  <div class="preview-card"></div>
+                  <div class="preview-card"></div>
+                </div>
+              </div>
+              <h4>Retro Theme</h4>
+              <p>
+                Pixelated retro gaming aesthetic with bold colors and sharp
+                edges.
+              </p>
+              <button
+                type="button"
+                onClick$={() => handleTemplateChange("retro")}
+                class={`template-btn ${selectedTemplate.value === "retro" ? "active" : ""}`}
+                disabled={store.isSaving}
+              >
+                {selectedTemplate.value === "retro" ? "Active" : "Apply"}
+              </button>
+            </div>
+
+            <div
+              class={`template-option ${selectedTemplate.value === "modern" ? "selected" : ""}`}
+            >
+              <div class="template-preview modern-preview">
+                <div class="preview-header"></div>
+                <div class="preview-content">
+                  <div class="preview-card"></div>
+                  <div class="preview-card"></div>
+                </div>
+              </div>
+              <h4>Modern Theme</h4>
+              <p>
+                Sleek minimalist design with rounded corners and subtle shadows.
+              </p>
+              <button
+                type="button"
+                onClick$={() => handleTemplateChange("modern")}
+                class={`template-btn ${selectedTemplate.value === "modern" ? "active" : ""}`}
+                disabled={store.isSaving}
+              >
+                {selectedTemplate.value === "modern" ? "Active" : "Apply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
         <h3>🎨 Custom CSS</h3>
         <p>
           Paste your custom CSS here to override the default styling. This will
@@ -294,6 +408,10 @@ export const SiteConfigManager = component$(() => {
           </p>
           <p>
             <strong>Current Channel:</strong> {store.config.channelName}
+          </p>
+          <p>
+            <strong>Active Theme:</strong>{" "}
+            {store.config.selectedTemplate || "retro"}
           </p>
           <p>
             <strong>Has Custom CSS:</strong>{" "}

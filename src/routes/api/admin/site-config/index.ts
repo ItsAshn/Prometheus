@@ -10,6 +10,7 @@ interface SiteConfig {
   channelName: string;
   channelDescription: string;
   customCss?: string;
+  selectedTemplate?: string;
   lastUpdated: string;
 }
 
@@ -19,6 +20,7 @@ const DEFAULT_CONFIG: SiteConfig = {
   channelDescription:
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.",
   customCss: "",
+  selectedTemplate: "retro",
   lastUpdated: new Date().toISOString(),
 };
 
@@ -101,7 +103,8 @@ export const onPost: RequestHandler = async ({ json, request }) => {
 
   try {
     const body = await request.json();
-    const { channelName, channelDescription, customCss } = body;
+    const { channelName, channelDescription, customCss, selectedTemplate } =
+      body;
 
     if (!channelName || !channelDescription) {
       json(400, { message: "Channel name and description are required" });
@@ -112,6 +115,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       channelName: channelName.trim(),
       channelDescription: channelDescription.trim(),
       customCss: customCss || "",
+      selectedTemplate: selectedTemplate || "retro",
       lastUpdated: new Date().toISOString(),
     };
 
