@@ -43,6 +43,9 @@ export const RouterHead = component$(() => {
             : { dangerouslySetInnerHTML: s.script })}
         />
       ))}
+
+      {/* HLS.js for video streaming support */}
+      <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     </>
   );
 });

@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme123}
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      # Optional: Mount a volume for persistent data if needed
+      - app-data:/app/data
+
+volumes:
+  app-data:

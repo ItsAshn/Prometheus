@@ -1,65 +1,87 @@
-# Qwik City App ⚡️
+# Self-Hosted Web Application
 
-- [Qwik Docs](https://qwik.dev/)
-- [Discord](https://qwik.dev/chat)
-- [Qwik GitHub](https://github.com/QwikDev/qwik)
-- [@QwikDev](https://twitter.com/QwikDev)
-- [Vite](https://vitejs.dev/)
+A secure self-hosted web application built with Qwik, featuring a public site and protected admin area.
 
----
+## Features
 
-## Project Structure
+- 🌐 **Public Site**: Accessible to everyone without authentication
+- 🔒 **Admin Area**: Secure admin panel accessible at `/admin`
+- 🐳 **Docker Ready**: Easy deployment with Docker Compose
+- 🔐 **Secure Authentication**: JWT tokens with HTTP-only cookies
+- ⚙️ **Environment Configuration**: Admin credentials via environment variables
 
-This project is using Qwik with [QwikCity](https://qwik.dev/qwikcity/overview/). QwikCity is just an extra set of tools on top of Qwik to make it easier to build a full site, including directory-based routing, layouts, and more.
+## Quick Start
 
-Inside your project, you'll see the following directory structure:
+### 1. Clone and Setup
 
-```
-├── public/
-│   └── ...
-└── src/
-    ├── components/
-    │   └── ...
-    └── routes/
-        └── ...
+```bash
+git clone <your-repo>
+cd qwik-app
+pnpm install
 ```
 
-- `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/qwikcity/routing/overview/) for more info.
+### 2. Configure Environment
 
-- `src/components`: Recommended directory for components.
+Copy the example environment file:
 
-- `public`: Any static assets, like images, can be placed in the public directory. Please see the [Vite public directory](https://vitejs.dev/guide/assets.html#the-public-directory) for more info.
-
-## Add Integrations and deployment
-
-Use the `npm run qwik add` command to add additional integrations. Some examples of integrations includes: Cloudflare, Netlify or Express Server, and the [Static Site Generator (SSG)](https://qwik.dev/qwikcity/guides/static-site-generation/).
-
-```shell
-npm run qwik add # or `yarn qwik add`
+```bash
+cp example.env .env
 ```
 
-## Development
+Edit `.env` and set your admin credentials:
 
-Development mode uses [Vite's development server](https://vitejs.dev/). The `dev` command will server-side render (SSR) the output during development.
-
-```shell
-npm start # or `yarn start`
+```env
+ADMIN_USERNAME=your-admin-username
+ADMIN_PASSWORD=your-secure-password
+JWT_SECRET=your-random-jwt-secret-key
 ```
 
-> Note: during dev mode, Vite may request a significant number of `.js` files. This does not represent a Qwik production build.
+### 3. Development
 
-## Preview
-
-The preview command will create a production build of the client modules, a production build of `src/entry.preview.tsx`, and run a local server. The preview server is only for convenience to preview a production build locally and should not be used as a production server.
-
-```shell
-npm run preview # or `yarn preview`
+```bash
+pnpm dev
 ```
 
-## Production
+Visit:
 
-The production build will generate client and server modules by running both client and server build commands. The build command will use Typescript to run a type check on the source code.
+- Public site: http://localhost:5173
+- Admin area: http://localhost:5173/admin
 
-```shell
-npm run build # or `yarn build`
+### 4. Production Deployment
+
+#### Using Docker Compose
+
+```bash
+# Make sure .env file is configured
+docker-compose up -d
 ```
+
+The application will be available at http://localhost:3000
+
+#### Manual Production Build
+
+```bash
+pnpm build
+pnpm preview
+```
+
+## Security Features
+
+### Admin Authentication
+
+- Admin credentials are configured via environment variables
+- Passwords are hashed with bcrypt (12 rounds)
+- JWT tokens with 24-hour expiration
+- Secure HTTP-only cookies
+- CSRF protection via SameSite cookies
+
+### Environment Variables
+
+| Variable         | Description        | Default       |
+| ---------------- | ------------------ | ------------- |
+| `ADMIN_USERNAME` | Admin username     | `admin`       |
+| `ADMIN_PASSWORD` | Admin password     | `changeme123` |
+| `JWT_SECRET`     | JWT signing secret | Random string |
+| `NODE_ENV`       | Environment mode   | `development` |
+
+**⚠️ Important**: Change the default admin password and JWT secret in production!

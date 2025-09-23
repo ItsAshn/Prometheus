@@ -40,3 +40,7 @@ lerna-debug.log*
 # Yarn
 .yarn/*
 !.yarn/releases
+
+# Video uploads and processing
+/temp
+/public/videos
