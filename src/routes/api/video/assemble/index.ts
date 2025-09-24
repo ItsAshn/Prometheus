@@ -29,7 +29,115 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       headers: Object.fromEntries(request.headers.entries()),
       hasBody: !!request.body,
       bodyUsed: request.bodyUsed,
+      contentType: request.headers.get("content-type"),
+      contentLength: request.headers.get("content-length"),
     });
+
+    // Declare variables for the assembly data
+    let uploadId, fileName, totalChunks, title;
+
+    // Try to access the raw body stream
+    if (request.body) {
+      const reader = request.body.getReader();
+      const chunks = [];
+      let totalLength = 0;
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          totalLength += value.length;
+        }
+        
+        // Reconstruct the body text
+        const bodyBytes = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+          bodyBytes.set(chunk, offset);
+          offset += chunk.length;
+        }
+        
+        const bodyText = new TextDecoder().decode(bodyBytes);
+        console.log("Raw body from stream:", bodyText.substring(0, 200));
+        
+        if (!bodyText || bodyText.trim() === "") {
+          throw new Error("Request body is empty");
+        }
+        
+        const requestData = JSON.parse(bodyText);
+        console.log("Parsed request data:", requestData);
+        
+        ({ uploadId, fileName, totalChunks, title } = requestData);
+        
+        if (!uploadId || !fileName || !totalChunks || !title) {
+          const errorData = {
+            success: false,
+            message: "Missing required assembly data",
+            received: { uploadId: !!uploadId, fileName: !!fileName, totalChunks: !!totalChunks, title: !!title },
+          };
+          const errorBody = JSON.stringify(errorData);
+          const origin = request.headers.get("origin") || "*";
+          send(
+            new Response(errorBody, {
+              status: 400,
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Length": errorBody.length.toString(),
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+              },
+            })
+          );
+          return;
+        }
+        
+        // Continue with the rest of the logic...
+        console.log(`Assembly request: uploadId=${uploadId}, fileName=${fileName}, totalChunks=${totalChunks}, title=${title}`);
+        
+      } catch (streamError) {
+        console.error("Failed to read body stream:", streamError);
+        const errorData = {
+          success: false,
+          message: "Failed to read request body",
+          details: streamError instanceof Error ? streamError.message : "Unknown stream error",
+        };
+        const errorBody = JSON.stringify(errorData);
+        const origin = request.headers.get("origin") || "*";
+        send(
+          new Response(errorBody, {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": errorBody.length.toString(),
+              "Access-Control-Allow-Origin": origin,
+              "Access-Control-Allow-Credentials": "true",
+            },
+          })
+        );
+        return;
+      }
+    } else {
+      console.error("No request body available");
+      const errorData = {
+        success: false,
+        message: "No request body received",
+      };
+      const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
+      send(
+        new Response(errorBody, {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+          },
+        })
+      );
+      return;
+    }
 
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
@@ -71,75 +179,12 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       return;
     }
 
-    // Parse request body using Qwik City's built-in JSON parsing
-    let uploadId, fileName, totalChunks, title;
-    try {
-      const requestData = await request.json();
-      console.log("Parsed request data:", requestData);
+        // Check that all chunks exist
+        const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
+        const chunks = [];
 
-      ({ uploadId, fileName, totalChunks, title } = requestData);
-    } catch (parseError) {
-      console.error("Failed to parse request JSON:", parseError);
-      const errorData = {
-        success: false,
-        message: "Invalid JSON in request body",
-        details:
-          parseError instanceof Error
-            ? parseError.message
-            : "Unknown parse error",
-      };
-      const errorBody = JSON.stringify(errorData);
-      const origin = request.headers.get("origin") || "*";
-      send(
-        new Response(errorBody, {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-          },
-        })
-      );
-      return;
-    }
-
-    if (!uploadId || !fileName || !totalChunks || !title) {
-      const errorData = {
-        success: false,
-        message: "Missing required assembly data",
-        received: {
-          uploadId: !!uploadId,
-          fileName: !!fileName,
-          totalChunks: !!totalChunks,
-          title: !!title,
-        },
-      };
-      const errorBody = JSON.stringify(errorData);
-      const origin = request.headers.get("origin") || "*";
-      send(
-        new Response(errorBody, {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-          },
-        })
-      );
-      return;
-    }
-
-    // Check that all chunks exist
-    const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
-    const chunks = [];
-
-    console.log(
-      `Assembly request: uploadId=${uploadId}, fileName=${fileName}, totalChunks=${totalChunks}, title=${title}`
-    );
-    console.log(`Working directory: ${process.cwd()}`);
-    console.log(`Checking temp directory: ${tempDir}`);
+        console.log(`Working directory: ${process.cwd()}`);
+        console.log(`Checking temp directory: ${tempDir}`);
 
     // Check if temp directory exists
     try {
