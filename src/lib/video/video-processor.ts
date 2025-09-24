@@ -495,4 +495,68 @@ export class VideoProcessor {
       console.error("Error removing processing status:", error);
     }
   }
+
+  // Check if a video needs re-processing due to large segments
+  static async analyzeVideoSegments(videoId: string): Promise<{
+    needsReprocessing: boolean;
+    averageSegmentSize: number;
+    largeSegmentCount: number;
+    totalSegments: number;
+    recommendation: string;
+  }> {
+    try {
+      const hlsDir = path.join(this.hlsDir, videoId);
+      const files = await fs.readdir(hlsDir);
+      const segmentFiles = files.filter(file => file.endsWith('.ts'));
+      
+      let totalSize = 0;
+      let largeSegmentCount = 0;
+      const LARGE_SEGMENT_THRESHOLD = 5 * 1024 * 1024; // 5MB threshold
+      
+      for (const file of segmentFiles) {
+        const filePath = path.join(hlsDir, file);
+        const stats = await fs.stat(filePath);
+        totalSize += stats.size;
+        
+        if (stats.size > LARGE_SEGMENT_THRESHOLD) {
+          largeSegmentCount++;
+          console.log(`Large segment detected: ${file} (${Math.round(stats.size / 1024 / 1024 * 100) / 100}MB)`);
+        }
+      }
+      
+      const averageSegmentSize = totalSize / segmentFiles.length;
+      const averageSegmentSizeMB = Math.round(averageSegmentSize / 1024 / 1024 * 100) / 100;
+      const needsReprocessing = averageSegmentSize > LARGE_SEGMENT_THRESHOLD || largeSegmentCount > segmentFiles.length * 0.3;
+      
+      let recommendation = "";
+      if (needsReprocessing) {
+        if (averageSegmentSizeMB > 10) {
+          recommendation = "URGENT: Average segment size is very large, causing timeout issues. Re-process immediately with smaller segments.";
+        } else if (largeSegmentCount > segmentFiles.length * 0.5) {
+          recommendation = "HIGH: Many large segments detected. Re-processing recommended for better streaming performance.";
+        } else {
+          recommendation = "MEDIUM: Some large segments detected. Consider re-processing for optimal performance.";
+        }
+      } else {
+        recommendation = "OK: Segment sizes are optimal for streaming.";
+      }
+      
+      return {
+        needsReprocessing,
+        averageSegmentSize: averageSegmentSizeMB,
+        largeSegmentCount,
+        totalSegments: segmentFiles.length,
+        recommendation
+      };
+    } catch (error) {
+      console.error("Error analyzing video segments:", error);
+      return {
+        needsReprocessing: false,
+        averageSegmentSize: 0,
+        largeSegmentCount: 0,
+        totalSegments: 0,
+        recommendation: "Error: Could not analyze segments"
+      };
+    }
+  }
 }

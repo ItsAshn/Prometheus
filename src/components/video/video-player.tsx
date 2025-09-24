@@ -50,29 +50,40 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               enableWorker: false,
               lowLatencyMode: false,
 
-              // Buffer management settings
-              backBufferLength: 90, // Keep more back buffer to handle gaps
-              maxBufferLength: 30, // Forward buffer length
-              maxMaxBufferLength: 90, // Maximum buffer length
+              // Buffer management settings - optimized for large segments
+              backBufferLength: 60, // Reasonable back buffer
+              maxBufferLength: 60, // Larger forward buffer for big segments
+              maxMaxBufferLength: 120, // Higher maximum buffer length
 
               // Gap handling settings
               nudgeOffset: 0.1, // Small nudge for gaps
               nudgeMaxRetry: 3, // Max retries for nudging
               maxFragLookUpTolerance: 0.25, // Fragment lookup tolerance
 
-              // Loading settings
-              maxLoadingDelay: 4,
-              maxBufferHole: 0.5, // Maximum allowed buffer hole
-              highBufferWatchdogPeriod: 2, // Buffer watchdog period
+              // Loading settings - adjusted for large segments
+              maxLoadingDelay: 8, // Higher loading delay for large segments
+              maxBufferHole: 1.0, // Allow larger buffer holes
+              highBufferWatchdogPeriod: 4, // Longer watchdog period
 
-              // Fragment retry settings
-              fragLoadingTimeOut: 20000, // 20 second timeout
-              fragLoadingMaxRetry: 4, // Max fragment retries
-              fragLoadingRetryDelay: 1000, // Retry delay
+              // Fragment retry settings - increased for large segments
+              fragLoadingTimeOut: 60000, // 60 second timeout for large segments
+              fragLoadingMaxRetry: 6, // More retries for large segments
+              fragLoadingRetryDelay: 2000, // Longer retry delay
 
-              // Playback settings
-              startFragPrefetch: true, // Prefetch first fragment
+              // Playback settings - optimized for large segments
+              startFragPrefetch: false, // Don't prefetch for large segments
               testBandwidth: false, // Disable bandwidth testing
+              progressive: true, // Enable progressive loading
+
+              // Additional settings for large segment handling
+              manifestLoadingTimeOut: 10000, // Manifest timeout
+              levelLoadingTimeOut: 10000, // Level loading timeout
+
+              // ABR (Adaptive Bitrate) settings
+              abrEwmaFastLive: 3.0, // Fast EWMA for live
+              abrEwmaSlowLive: 9.0, // Slow EWMA for live
+              abrEwmaFastVoD: 3.0, // Fast EWMA for VoD
+              abrEwmaSlowVoD: 9.0, // Slow EWMA for VoD
             });
 
             hls.loadSource(streamingUrl);
@@ -94,6 +105,26 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 response: data.response,
                 networkDetails: data.networkDetails,
               });
+
+              // Handle timeout errors specifically
+              if (data.details === "fragLoadTimeOut") {
+                console.log("Fragment load timeout detected for large segment");
+                if (!data.fatal) {
+                  console.log(
+                    "Non-fatal timeout, player will retry automatically"
+                  );
+                  return;
+                }
+              }
+
+              // Handle network errors
+              if (data.details === "fragLoadError") {
+                console.log("Fragment load error, likely network related");
+                if (!data.fatal) {
+                  console.log("Non-fatal load error, player will retry");
+                  return;
+                }
+              }
 
               // Handle specific gap-related errors
               if (data.details === "bufferSeekOverHole") {
