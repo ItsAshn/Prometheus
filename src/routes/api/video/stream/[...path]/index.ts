@@ -1,6 +1,7 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { existsSync } from "fs";
 
 // Handle OPTIONS requests for CORS preflight
 export const onOptions: RequestHandler = async ({ send }) => {
@@ -18,9 +19,13 @@ export const onOptions: RequestHandler = async ({ send }) => {
 };
 
 export const onGet: RequestHandler = async ({ params, send }) => {
+  const requestStart = Date.now();
   const path = params.path;
 
+  console.log(`[${new Date().toISOString()}] Video stream request: ${path}`);
+
   if (!path) {
+    console.log("Error: No path parameter provided");
     send(
       new Response('{"error":"Path parameter is required"}', {
         status: 400,
@@ -59,7 +64,45 @@ export const onGet: RequestHandler = async ({ params, send }) => {
 
     const fullPath = join(process.cwd(), "public", cleanPath);
     console.log("Full path constructed:", fullPath);
-    const fileContent = await readFile(fullPath);
+
+    // Check if file exists and get size
+    if (!existsSync(fullPath)) {
+      console.error("File not found:", fullPath);
+      send(
+        new Response('{"error":"Video file not found"}', {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      return;
+    }
+
+    let fileContent: Buffer;
+    try {
+      const readStartTime = Date.now();
+      fileContent = await readFile(fullPath);
+      const readTime = Date.now() - readStartTime;
+      const fileSizeMB =
+        Math.round((fileContent.length / 1024 / 1024) * 100) / 100;
+      console.log(`File read successfully: ${fileSizeMB}MB in ${readTime}ms`);
+
+      // Check for unusually large files that might cause issues
+      if (fileContent.length > 50 * 1024 * 1024) {
+        // 50MB+
+        console.warn(
+          `Warning: Very large file detected (${fileSizeMB}MB), this may cause memory issues`
+        );
+      }
+    } catch (readError) {
+      console.error("Failed to read file:", fullPath, readError);
+      send(
+        new Response('{"error":"Failed to read video file"}', {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+      return;
+    }
 
     // Set appropriate MIME type
     let mimeType: string;
@@ -121,45 +164,66 @@ export const onGet: RequestHandler = async ({ params, send }) => {
       // For .ts and .mp4 files, serve as binary with proper headers
       console.log("Serving media file, size:", fileContent.length, "bytes");
 
-      // Add streaming-optimized headers for large video segments
-      const headers = new Headers({
+      // Add basic headers for video streaming
+      const headers: Record<string, string> = {
         "Content-Type": mimeType,
         "Content-Length": fileContent.length.toString(),
-        "Accept-Ranges": "bytes",
         "Cache-Control": "public, max-age=3600",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-        "Access-Control-Allow-Headers": "Range, Content-Range, Authorization",
-        "Access-Control-Expose-Headers":
-          "Content-Length, Content-Range, Accept-Ranges",
-        // Additional headers for better streaming performance
-        Connection: "keep-alive",
-        "Transfer-Encoding": "identity", // Disable chunked encoding for video
-      });
+        "Access-Control-Expose-Headers": "Content-Length",
+      };
 
-      // For large files (>5MB), add additional streaming hints
+      // For large files (>5MB), add additional hints
       if (fileContent.length > 5 * 1024 * 1024) {
-        headers.set("X-Content-Type-Options", "nosniff");
-        headers.set("Content-Disposition", "inline");
+        headers["Accept-Ranges"] = "bytes";
         console.log(
-          "Large file detected, adding streaming optimization headers"
+          "Large file detected, size:",
+          Math.round(fileContent.length / 1024 / 1024),
+          "MB"
         );
       }
 
+      try {
+        send(
+          new Response(new Uint8Array(fileContent), {
+            status: 200,
+            headers,
+          })
+        );
+        const requestTime = Date.now() - requestStart;
+        console.log(
+          `Response sent successfully for: ${path} (${requestTime}ms)`
+        );
+      } catch (sendError) {
+        console.error("Failed to send response:", sendError);
+        // Try to send a simpler error response
+        try {
+          send(
+            new Response('{"error":"Failed to send video data"}', {
+              status: 500,
+              headers: { "Content-Type": "application/json" },
+            })
+          );
+        } catch (fallbackError) {
+          console.error(
+            "Failed to send fallback error response:",
+            fallbackError
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Unexpected error in video streaming:", error);
+    try {
       send(
-        new Response(new Uint8Array(fileContent), {
-          status: 200,
-          headers,
+        new Response('{"error":"Internal server error"}', {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
         })
       );
+    } catch (errorResponseError) {
+      console.error("Failed to send error response:", errorResponseError);
     }
-  } catch (fileError) {
-    console.error("File read error:", fileError);
-    send(
-      new Response('{"error":"Video file not found"}', {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      })
-    );
   }
 };
