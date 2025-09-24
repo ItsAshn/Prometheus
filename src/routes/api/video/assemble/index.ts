@@ -71,26 +71,18 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       return;
     }
 
-    // Parse request body with proper error handling
-    let requestBody;
+    // Parse request body using Qwik City's built-in JSON parsing
+    let uploadId, fileName, totalChunks, title;
     try {
-      const bodyText = await request.text();
-      console.log(
-        "Raw request body:",
-        bodyText.substring(0, 200) + (bodyText.length > 200 ? "..." : "")
-      );
+      const requestData = await request.json();
+      console.log("Parsed request data:", requestData);
 
-      if (!bodyText || bodyText.trim() === "") {
-        throw new Error("Request body is empty");
-      }
-
-      requestBody = JSON.parse(bodyText);
-      console.log("Parsed request body:", requestBody);
+      ({ uploadId, fileName, totalChunks, title } = requestData);
     } catch (parseError) {
-      console.error("Failed to parse request body:", parseError);
+      console.error("Failed to parse request JSON:", parseError);
       const errorData = {
         success: false,
-        message: "Invalid or empty request body",
+        message: "Invalid JSON in request body",
         details:
           parseError instanceof Error
             ? parseError.message
@@ -111,8 +103,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       );
       return;
     }
-
-    const { uploadId, fileName, totalChunks, title } = requestBody;
 
     if (!uploadId || !fileName || !totalChunks || !title) {
       const errorData = {
