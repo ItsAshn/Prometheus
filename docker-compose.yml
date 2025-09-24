@@ -34,7 +34,8 @@ services:
       # - ./public/videos:/app/public/videos
       # - ./temp:/app/temp
     networks:
-      - cloudflareTunnel
+      cloudflareTunnel:
+        ipv4_address: 172.18.0.7
     healthcheck:
       test:
         [
@@ -69,4 +70,8 @@ volumes:
 
 networks:
   cloudflareTunnel:
-    external: true
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1
