@@ -4,6 +4,21 @@ import path from "path";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
+export const onOptions: RequestHandler = async ({ send }) => {
+  // Handle CORS preflight requests
+  send(
+    new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    })
+  );
+};
+
 export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
     // Get admin token from cookie
@@ -20,7 +35,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 401,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -41,7 +55,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 401,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -61,7 +74,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 400,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -91,7 +103,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
             status: 400,
             headers: {
               "Content-Type": "application/json",
-              "Content-Length": errorBody.length.toString(),
             },
           })
         );
@@ -135,7 +146,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
             status: 400,
             headers: {
               "Content-Type": "application/json",
-              "Content-Length": errorBody.length.toString(),
             },
           })
         );
@@ -173,7 +183,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 200,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": successBody.length.toString(),
+
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST",
             "Access-Control-Allow-Headers": "Content-Type",
@@ -200,7 +210,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": errorBody.length.toString(),
+
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",

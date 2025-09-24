@@ -3,10 +3,32 @@ import { promises as fs } from "fs";
 import path from "path";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
+export const onOptions: RequestHandler = async ({ send }) => {
+  // Handle CORS preflight requests
+  send(
+    new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    })
+  );
+};
+
 export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
+    console.log("Chunk upload - Cookie check:", {
+      cookieName: ADMIN_COOKIE_NAME,
+      hasToken: !!adminToken,
+      tokenPreview: adminToken
+        ? adminToken.value.substring(0, 20) + "..."
+        : "none",
+    });
 
     if (!adminToken) {
       const errorData = {
@@ -19,7 +41,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 401,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -28,6 +49,12 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     // Verify admin authentication
     const tokenPayload = AdminAuthService.verifyToken(adminToken.value);
+    console.log("Chunk upload - Token verification:", {
+      isValid: !!tokenPayload,
+      payload: tokenPayload
+        ? { username: tokenPayload.username, isAdmin: tokenPayload.isAdmin }
+        : null,
+    });
 
     if (!tokenPayload) {
       const errorData = {
@@ -40,7 +67,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 401,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -72,7 +98,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           status: 400,
           headers: {
             "Content-Type": "application/json",
-            "Content-Length": errorBody.length.toString(),
           },
         })
       );
@@ -126,7 +151,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": responseBody.length.toString(),
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",
@@ -148,7 +172,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": errorBody.length.toString(),
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",
