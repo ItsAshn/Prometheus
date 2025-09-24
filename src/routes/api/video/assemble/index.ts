@@ -23,6 +23,14 @@ export const onOptions: RequestHandler = async ({ send, request }) => {
 
 export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
+    console.log("Assemble endpoint called - Request details:", {
+      method: request.method,
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+      hasBody: !!request.body,
+      bodyUsed: request.bodyUsed,
+    });
+
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
 
@@ -63,19 +71,70 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       return;
     }
 
-    const { uploadId, fileName, totalChunks, title } = await request.json();
+    // Parse request body with proper error handling
+    let requestBody;
+    try {
+      const bodyText = await request.text();
+      console.log(
+        "Raw request body:",
+        bodyText.substring(0, 200) + (bodyText.length > 200 ? "..." : "")
+      );
 
-    if (!uploadId || !fileName || !totalChunks || !title) {
+      if (!bodyText || bodyText.trim() === "") {
+        throw new Error("Request body is empty");
+      }
+
+      requestBody = JSON.parse(bodyText);
+      console.log("Parsed request body:", requestBody);
+    } catch (parseError) {
+      console.error("Failed to parse request body:", parseError);
       const errorData = {
         success: false,
-        message: "Missing required assembly data",
+        message: "Invalid or empty request body",
+        details:
+          parseError instanceof Error
+            ? parseError.message
+            : "Unknown parse error",
       };
       const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
       send(
         new Response(errorBody, {
           status: 400,
           headers: {
             "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+          },
+        })
+      );
+      return;
+    }
+
+    const { uploadId, fileName, totalChunks, title } = requestBody;
+
+    if (!uploadId || !fileName || !totalChunks || !title) {
+      const errorData = {
+        success: false,
+        message: "Missing required assembly data",
+        received: {
+          uploadId: !!uploadId,
+          fileName: !!fileName,
+          totalChunks: !!totalChunks,
+          title: !!title,
+        },
+      };
+      const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
+      send(
+        new Response(errorBody, {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
           },
         })
       );
@@ -304,12 +363,14 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
     const errorData = {
       success: false,
       message: "Internal server error during file assembly",
-      details:
-        process.env.NODE_ENV === "development"
-          ? error instanceof Error
-            ? error.message
-            : "Unknown error"
-          : undefined,
+      details: error instanceof Error ? error.message : "Unknown error",
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      stack: error instanceof Error ? error.stack : "No stack trace",
+      timestamp: new Date().toISOString(),
+      debug: {
+        workingDirectory: process.cwd(),
+        nodeEnv: process.env.NODE_ENV,
+      },
     };
 
     const errorBody = JSON.stringify(errorData);
