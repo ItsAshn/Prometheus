@@ -79,7 +79,7 @@ export const VideoUpload = component$(() => {
         `Starting chunked upload: ${totalChunks} chunks of ${CHUNK_SIZE / 1024 / 1024}MB each`
       );
 
-      // Upload chunks
+      // Upload chunks with retry mechanism
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
         const start = chunkIndex * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -95,22 +95,100 @@ export const VideoUpload = component$(() => {
         message.value = `Uploading chunk ${chunkIndex + 1}/${totalChunks}...`;
         uploadProgress.value = ((chunkIndex + 1) / totalChunks) * 90; // Reserve 10% for assembly
 
-        const response = await fetch("/api/video/upload-chunk", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
+        // Retry mechanism for chunks
+        let retries = 3;
+        let lastError = null;
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Chunk upload error:", errorText);
-          message.value = `Chunk upload failed: ${response.status} ${response.statusText}`;
+        while (retries > 0) {
+          try {
+            const response = await fetch("/api/video/upload-chunk", {
+              method: "POST",
+              body: formData,
+              credentials: "include",
+            });
+
+            if (!response.ok) {
+              let errorText = "Unknown error";
+              try {
+                errorText = await response.text();
+              } catch (textError) {
+                console.warn("Could not read error response text:", textError);
+                errorText = `HTTP ${response.status} ${response.statusText}`;
+              }
+
+              // If it's a server error (5xx), retry
+              if (response.status >= 500 && retries > 1) {
+                console.warn(
+                  `Chunk ${chunkIndex + 1} upload failed (${response.status}), retrying... (${retries - 1} attempts left)`
+                );
+                lastError = errorText;
+                retries--;
+                await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second before retry
+                continue;
+              }
+
+              console.error("Chunk upload error:", errorText);
+              message.value = `Chunk upload failed: ${response.status} ${response.statusText}`;
+              messageType.value = "error";
+              return;
+            }
+
+            let result;
+            try {
+              result = await response.json();
+            } catch (jsonError) {
+              if (retries > 1) {
+                console.warn(
+                  `Failed to parse chunk ${chunkIndex + 1} response, retrying... (${retries - 1} attempts left)`
+                );
+                lastError = "Invalid response format";
+                retries--;
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                continue;
+              }
+
+              console.error(
+                "Failed to parse chunk upload response as JSON:",
+                jsonError
+              );
+              message.value = `Chunk upload failed: Invalid response format`;
+              messageType.value = "error";
+              return;
+            }
+
+            console.log(
+              `Chunk ${chunkIndex + 1}/${totalChunks} uploaded:`,
+              result
+            );
+            break; // Success, exit retry loop
+          } catch (error) {
+            if (retries > 1) {
+              console.warn(
+                `Chunk ${chunkIndex + 1} upload failed with network error, retrying... (${retries - 1} attempts left)`,
+                error
+              );
+              lastError = error;
+              retries--;
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              continue;
+            }
+
+            console.error("Network error during chunk upload:", error);
+            message.value = `Network error during chunk upload: ${error}`;
+            messageType.value = "error";
+            return;
+          }
+        }
+
+        if (retries === 0) {
+          console.error(
+            `Failed to upload chunk ${chunkIndex + 1} after all retries:`,
+            lastError
+          );
+          message.value = `Failed to upload chunk ${chunkIndex + 1} after retries`;
           messageType.value = "error";
           return;
         }
-
-        const result = await response.json();
-        console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded:`, result);
       }
 
       // Assemble chunks
@@ -132,14 +210,32 @@ export const VideoUpload = component$(() => {
       });
 
       if (!assembleResponse.ok) {
-        const errorText = await assembleResponse.text();
+        let errorText = "Unknown assembly error";
+        try {
+          errorText = await assembleResponse.text();
+        } catch (textError) {
+          console.warn(
+            "Could not read assembly error response text:",
+            textError
+          );
+          errorText = `HTTP ${assembleResponse.status} ${assembleResponse.statusText}`;
+        }
         console.error("Assembly error:", errorText);
         message.value = `File assembly failed: ${assembleResponse.status} ${assembleResponse.statusText}`;
         messageType.value = "error";
         return;
       }
 
-      const assembleResult = await assembleResponse.json();
+      let assembleResult;
+      try {
+        assembleResult = await assembleResponse.json();
+      } catch (jsonError) {
+        console.error("Failed to parse assembly response as JSON:", jsonError);
+        message.value = `File assembly failed: Invalid response format`;
+        messageType.value = "error";
+        return;
+      }
+
       console.log("Assembly result:", assembleResult);
 
       if (assembleResult.success) {

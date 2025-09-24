@@ -4,16 +4,26 @@ import path from "path";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
-export const onPost: RequestHandler = async ({ request, json, cookie }) => {
+export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
 
     if (!adminToken) {
-      json(401, {
+      const errorData = {
         success: false,
         message: "Admin authentication required",
-      });
+      };
+      const errorBody = JSON.stringify(errorData);
+      send(
+        new Response(errorBody, {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+          },
+        })
+      );
       return;
     }
 
@@ -21,20 +31,40 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     const tokenPayload = AdminAuthService.verifyToken(adminToken.value);
 
     if (!tokenPayload) {
-      json(401, {
+      const errorData = {
         success: false,
         message: "Invalid or expired token",
-      });
+      };
+      const errorBody = JSON.stringify(errorData);
+      send(
+        new Response(errorBody, {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+          },
+        })
+      );
       return;
     }
 
     const { uploadId, fileName, totalChunks, title } = await request.json();
 
     if (!uploadId || !fileName || !totalChunks || !title) {
-      json(400, {
+      const errorData = {
         success: false,
         message: "Missing required assembly data",
-      });
+      };
+      const errorBody = JSON.stringify(errorData);
+      send(
+        new Response(errorBody, {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+          },
+        })
+      );
       return;
     }
 
@@ -51,10 +81,20 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
         await fs.access(chunkPath);
         chunks.push(chunkPath);
       } catch {
-        json(400, {
+        const errorData = {
           success: false,
           message: `Missing chunk ${i + 1}/${totalChunks}`,
-        });
+        };
+        const errorBody = JSON.stringify(errorData);
+        send(
+          new Response(errorBody, {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": errorBody.length.toString(),
+            },
+          })
+        );
         return;
       }
     }
@@ -85,10 +125,20 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
 
       if (!allowedExtensions.includes(fileExtension || "")) {
         await fs.unlink(finalFilePath);
-        json(400, {
+        const errorData = {
           success: false,
           message: "Invalid file type. Only video files are allowed.",
-        });
+        };
+        const errorBody = JSON.stringify(errorData);
+        send(
+          new Response(errorBody, {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": errorBody.length.toString(),
+            },
+          })
+        );
         return;
       }
 
@@ -109,12 +159,27 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
           fs.unlink(finalFilePath).catch(console.error);
         });
 
-      json(200, {
+      const successData = {
         success: true,
         message: "Video upload completed. Processing in background.",
         videoId,
         title,
-      });
+      };
+
+      const successBody = JSON.stringify(successData);
+
+      send(
+        new Response(successBody, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": successBody.length.toString(),
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        })
+      );
     } catch (error) {
       await writeStream.close().catch(() => {});
       await fs.unlink(finalFilePath).catch(() => {});
@@ -122,9 +187,25 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     }
   } catch (error) {
     console.error("File assembly error:", error);
-    json(500, {
+
+    const errorData = {
       success: false,
       message: "Internal server error during file assembly",
-    });
+    };
+
+    const errorBody = JSON.stringify(errorData);
+
+    send(
+      new Response(errorBody, {
+        status: 500,
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": errorBody.length.toString(),
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      })
+    );
   }
 };
