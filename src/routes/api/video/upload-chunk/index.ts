@@ -131,19 +131,36 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     // Create temp directory for this upload
     const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
-    await fs.mkdir(tempDir, { recursive: true });
+
+    try {
+      await fs.mkdir(tempDir, { recursive: true });
+      console.log(`Created/ensured temp directory: ${tempDir}`);
+    } catch (error) {
+      console.error(`Failed to create temp directory: ${tempDir}`, error);
+      throw new Error(`Failed to create temp directory: ${error}`);
+    }
 
     // Save the chunk
     const chunkPath = path.join(
       tempDir,
       `chunk_${chunkIndex.toString().padStart(4, "0")}`
     );
-    const arrayBuffer = await chunk.arrayBuffer();
-    await fs.writeFile(chunkPath, new Uint8Array(arrayBuffer));
 
-    console.log(
-      `Chunk ${chunkIndex + 1}/${totalChunks} uploaded for ${fileName}`
-    );
+    try {
+      const arrayBuffer = await chunk.arrayBuffer();
+      const chunkData = new Uint8Array(arrayBuffer);
+      await fs.writeFile(chunkPath, chunkData);
+
+      console.log(
+        `Chunk ${chunkIndex + 1}/${totalChunks} uploaded for ${fileName}: ${chunkData.length} bytes -> ${chunkPath}`
+      );
+    } catch (error) {
+      console.error(
+        `Failed to save chunk ${chunkIndex + 1}/${totalChunks}:`,
+        error
+      );
+      throw new Error(`Failed to save chunk: ${error}`);
+    }
 
     // Check if all chunks are uploaded
     const uploadedChunks = [];
@@ -186,11 +203,23 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       })
     );
   } catch (error) {
-    console.error("Chunk upload error:", error);
+    console.error("Chunk upload error:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : "No stack trace",
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      timestamp: new Date().toISOString(),
+      workingDirectory: process.cwd(),
+    });
 
     const errorData = {
       success: false,
       message: "Internal server error during chunk upload",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : "Unknown error"
+          : undefined,
     };
 
     const errorBody = JSON.stringify(errorData);

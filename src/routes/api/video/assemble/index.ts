@@ -86,6 +86,38 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
     const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
     const chunks = [];
 
+    console.log(
+      `Assembly request: uploadId=${uploadId}, fileName=${fileName}, totalChunks=${totalChunks}, title=${title}`
+    );
+    console.log(`Working directory: ${process.cwd()}`);
+    console.log(`Checking temp directory: ${tempDir}`);
+
+    // Check if temp directory exists
+    try {
+      await fs.access(tempDir);
+      console.log(`Temp directory exists: ${tempDir}`);
+    } catch (error) {
+      console.error(`Temp directory does not exist: ${tempDir}`, error);
+      const errorData = {
+        success: false,
+        message: `Upload directory not found. Please retry the upload.`,
+      };
+      const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
+      send(
+        new Response(errorBody, {
+          status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+          },
+        })
+      );
+      return;
+    }
+
     for (let i = 0; i < totalChunks; i++) {
       const chunkPath = path.join(
         tempDir,
@@ -94,17 +126,26 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       try {
         await fs.access(chunkPath);
         chunks.push(chunkPath);
-      } catch {
+        console.log(`Found chunk ${i + 1}/${totalChunks}: ${chunkPath}`);
+      } catch (error) {
+        console.error(
+          `Missing chunk ${i + 1}/${totalChunks}: ${chunkPath}`,
+          error
+        );
         const errorData = {
           success: false,
           message: `Missing chunk ${i + 1}/${totalChunks}`,
         };
         const errorBody = JSON.stringify(errorData);
+        const origin = request.headers.get("origin") || "*";
         send(
           new Response(errorBody, {
             status: 400,
             headers: {
               "Content-Type": "application/json",
+              "Content-Length": errorBody.length.toString(),
+              "Access-Control-Allow-Origin": origin,
+              "Access-Control-Allow-Credentials": "true",
             },
           })
         );
@@ -112,25 +153,68 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       }
     }
 
+    // Ensure temp directory exists for assembled file
+    const tempPath = path.join(process.cwd(), "temp");
+    try {
+      await fs.mkdir(tempPath, { recursive: true });
+      console.log(`Ensured temp directory exists: ${tempPath}`);
+    } catch (error) {
+      console.error(`Failed to create temp directory: ${tempPath}`, error);
+      throw new Error(`Failed to create temp directory: ${error}`);
+    }
+
     // Assemble the file
     const finalFilePath = path.join(
-      process.cwd(),
-      "temp",
+      tempPath,
       `assembled_${Date.now()}_${fileName}`
     );
-    const writeStream = await fs.open(finalFilePath, "w");
+
+    console.log(`Starting file assembly: ${finalFilePath}`);
+
+    let writeStream;
+    try {
+      writeStream = await fs.open(finalFilePath, "w");
+      console.log(`Opened write stream for: ${finalFilePath}`);
+    } catch (error) {
+      console.error(`Failed to open write stream: ${finalFilePath}`, error);
+      throw new Error(`Failed to open write stream: ${error}`);
+    }
 
     try {
-      for (const chunkPath of chunks) {
-        const chunkData = await fs.readFile(chunkPath);
-        await writeStream.write(chunkData);
+      let totalBytesWritten = 0;
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkPath = chunks[i];
+        console.log(`Reading chunk ${i + 1}/${chunks.length}: ${chunkPath}`);
+
+        try {
+          const chunkData = await fs.readFile(chunkPath);
+          await writeStream.write(chunkData);
+          totalBytesWritten += chunkData.length;
+          console.log(
+            `Written chunk ${i + 1}/${chunks.length}, bytes: ${chunkData.length}, total: ${totalBytesWritten}`
+          );
+        } catch (error) {
+          console.error(
+            `Failed to read/write chunk ${i + 1}: ${chunkPath}`,
+            error
+          );
+          throw new Error(`Failed to process chunk ${i + 1}: ${error}`);
+        }
       }
+
       await writeStream.close();
+      console.log(
+        `File assembly completed: ${fileName} -> ${finalFilePath}, total bytes: ${totalBytesWritten}`
+      );
 
       // Clean up chunks
-      await fs.rm(tempDir, { recursive: true, force: true });
-
-      console.log(`File assembled: ${fileName} -> ${finalFilePath}`);
+      try {
+        await fs.rm(tempDir, { recursive: true, force: true });
+        console.log(`Cleaned up temp directory: ${tempDir}`);
+      } catch (error) {
+        console.warn(`Failed to clean up temp directory: ${tempDir}`, error);
+        // Don't fail the assembly for cleanup errors
+      }
 
       // Validate file type
       const allowedExtensions = ["mp4", "avi", "mov", "mkv", "webm"];
@@ -193,29 +277,54 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         })
       );
     } catch (error) {
-      await writeStream.close().catch(() => {});
-      await fs.unlink(finalFilePath).catch(() => {});
+      console.error("Error during file assembly:", error);
+      if (writeStream) {
+        try {
+          await writeStream.close();
+        } catch (closeError) {
+          console.error("Error closing write stream:", closeError);
+        }
+      }
+      try {
+        await fs.unlink(finalFilePath);
+        console.log(`Cleaned up failed assembly file: ${finalFilePath}`);
+      } catch (unlinkError) {
+        console.error("Error cleaning up failed assembly file:", unlinkError);
+      }
       throw error;
     }
   } catch (error) {
-    console.error("File assembly error:", error);
+    console.error("File assembly error:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : "No stack trace",
+      errorType: error instanceof Error ? error.constructor.name : typeof error,
+      timestamp: new Date().toISOString(),
+    });
 
     const errorData = {
       success: false,
       message: "Internal server error during file assembly",
+      details:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : "Unknown error"
+          : undefined,
     };
 
     const errorBody = JSON.stringify(errorData);
+    const origin = request.headers.get("origin") || "*";
 
     send(
       new Response(errorBody, {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-
-          "Access-Control-Allow-Origin": "*",
+          "Content-Length": errorBody.length.toString(),
+          "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "POST",
           "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Credentials": "true",
         },
       })
     );
