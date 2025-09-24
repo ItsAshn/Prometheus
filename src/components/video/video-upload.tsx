@@ -230,17 +230,16 @@ export const VideoUpload = component$(() => {
       message.value = "Assembling file and starting processing...";
       uploadProgress.value = 95;
 
+      // Use FormData instead of JSON to avoid middleware issues
+      const assembleFormData = new FormData();
+      assembleFormData.append("uploadId", uploadId);
+      assembleFormData.append("fileName", file.name);
+      assembleFormData.append("totalChunks", totalChunks.toString());
+      assembleFormData.append("title", title.value.trim());
+
       const assembleResponse = await fetch("/api/video/assemble", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          uploadId,
-          fileName: file.name,
-          totalChunks,
-          title: title.value.trim(),
-        }),
+        body: assembleFormData,
         credentials: "include",
       });
 
