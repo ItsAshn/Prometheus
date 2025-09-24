@@ -32,11 +32,17 @@ RUN pnpm prune --prod
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S qwik -u 1001
 
+# Install su-exec for proper user switching
+RUN apk add --no-cache su-exec
+
+# Create entrypoint script to handle permissions
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'chown -R qwik:nodejs /app/public/videos /app/temp /app/data 2>/dev/null || true' >> /entrypoint.sh && \
+    echo 'exec su-exec qwik "$@"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
 # Change ownership of app directory to the nodejs user
 RUN chown -R qwik:nodejs /app
-
-# Switch to non-root user
-USER qwik
 
 # Expose the port the app runs on
 EXPOSE 3000
@@ -46,4 +52,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
 # Start the application in preview mode (production build)
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["pnpm", "preview"]
