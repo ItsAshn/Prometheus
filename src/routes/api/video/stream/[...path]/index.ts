@@ -11,18 +11,24 @@ export const onOptions: RequestHandler = async ({ send }) => {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-        "Access-Control-Allow-Headers": "Range, Content-Range, Authorization",
+        "Access-Control-Allow-Headers":
+          "Range, Content-Range, Authorization, Content-Type",
+        "Access-Control-Expose-Headers":
+          "Content-Length, Content-Range, Accept-Ranges",
         "Access-Control-Max-Age": "86400",
       },
     })
   );
 };
 
-export const onGet: RequestHandler = async ({ params, send }) => {
+export const onGet: RequestHandler = async ({ params, send, request }) => {
   const requestStart = Date.now();
   const path = params.path;
+  const rangeHeader = request.headers.get("range");
 
-  console.log(`[${new Date().toISOString()}] Video stream request: ${path}`);
+  console.log(
+    `[${new Date().toISOString()}] Video stream request: ${path}${rangeHeader ? ` (Range: ${rangeHeader})` : ""}`
+  );
 
   if (!path) {
     console.log("Error: No path parameter provided");
@@ -164,52 +170,117 @@ export const onGet: RequestHandler = async ({ params, send }) => {
       // For .ts and .mp4 files, serve as binary with proper headers
       console.log("Serving media file, size:", fileContent.length, "bytes");
 
-      // Add basic headers for video streaming
-      const headers: Record<string, string> = {
-        "Content-Type": mimeType,
-        "Content-Length": fileContent.length.toString(),
-        "Cache-Control": "public, max-age=3600",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-        "Access-Control-Expose-Headers": "Content-Length",
-      };
+      const fileSize = fileContent.length;
+      const fileSizeMB = Math.round((fileSize / 1024 / 1024) * 100) / 100;
 
-      // For large files (>5MB), add additional hints
-      if (fileContent.length > 5 * 1024 * 1024) {
-        headers["Accept-Ranges"] = "bytes";
-        console.log(
-          "Large file detected, size:",
-          Math.round(fileContent.length / 1024 / 1024),
-          "MB"
-        );
-      }
+      // Handle range requests for large files (improves streaming performance)
+      if (rangeHeader && fileSize > 1024 * 1024) {
+        // Only for files > 1MB
+        const parts = rangeHeader.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-      try {
-        send(
-          new Response(new Uint8Array(fileContent), {
-            status: 200,
-            headers,
-          })
-        );
-        const requestTime = Date.now() - requestStart;
+        if (start >= fileSize || end >= fileSize) {
+          send(
+            new Response('{"error":"Range not satisfiable"}', {
+              status: 416,
+              headers: {
+                "Content-Type": "application/json",
+                "Content-Range": `bytes */${fileSize}`,
+              },
+            })
+          );
+          return;
+        }
+
+        const chunkSize = end - start + 1;
+        const chunk = fileContent.slice(start, end + 1);
+
         console.log(
-          `Response sent successfully for: ${path} (${requestTime}ms)`
+          `Serving range ${start}-${end}/${fileSize} (${Math.round(chunkSize / 1024)}KB chunk)`
         );
-      } catch (sendError) {
-        console.error("Failed to send response:", sendError);
-        // Try to send a simpler error response
+
+        const headers: Record<string, string> = {
+          "Content-Type": mimeType,
+          "Content-Length": chunkSize.toString(),
+          "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "public, max-age=3600",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+          "Access-Control-Expose-Headers":
+            "Content-Length, Content-Range, Accept-Ranges",
+        };
+
         try {
           send(
-            new Response('{"error":"Failed to send video data"}', {
+            new Response(new Uint8Array(chunk), {
+              status: 206, // Partial Content
+              headers,
+            })
+          );
+          const requestTime = Date.now() - requestStart;
+          console.log(
+            `Range response sent successfully: ${path} (${requestTime}ms)`
+          );
+        } catch (sendError) {
+          console.error("Failed to send range response:", sendError);
+          send(
+            new Response('{"error":"Failed to send video chunk"}', {
               status: 500,
               headers: { "Content-Type": "application/json" },
             })
           );
-        } catch (fallbackError) {
-          console.error(
-            "Failed to send fallback error response:",
-            fallbackError
+        }
+      } else {
+        // Serve the entire file
+        const headers: Record<string, string> = {
+          "Content-Type": mimeType,
+          "Content-Length": fileSize.toString(),
+          "Cache-Control": "public, max-age=3600",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+          "Access-Control-Expose-Headers": "Content-Length, Accept-Ranges",
+        };
+
+        // Always add Accept-Ranges for video files to enable progressive loading
+        if (path.endsWith(".ts") || path.endsWith(".mp4")) {
+          headers["Accept-Ranges"] = "bytes";
+        }
+
+        if (fileSizeMB > 5) {
+          console.log(
+            `Large file detected: ${fileSizeMB}MB - enabling range support`
           );
+        }
+
+        try {
+          send(
+            new Response(new Uint8Array(fileContent), {
+              status: 200,
+              headers,
+            })
+          );
+          const requestTime = Date.now() - requestStart;
+          console.log(
+            `Response sent successfully for: ${path} (${fileSizeMB}MB in ${requestTime}ms)`
+          );
+        } catch (sendError) {
+          console.error("Failed to send response:", sendError);
+          // Try to send a simpler error response
+          try {
+            send(
+              new Response('{"error":"Failed to send video data"}', {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+              })
+            );
+          } catch (fallbackError) {
+            console.error(
+              "Failed to send fallback error response:",
+              fallbackError
+            );
+          }
         }
       }
     }
