@@ -206,7 +206,7 @@ export class VideoProcessor {
           
           // Additional HLS flags for better compatibility
           "-hls_flags independent_segments+program_date_time",
-          "-hls_segment_type fmp4", // Use fragmented MP4 segments for better streaming
+          // Using standard TS segments for maximum compatibility
           
           // Buffer and threading optimizations
           "-max_muxing_queue_size 1024", // Handle complex files better

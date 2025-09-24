@@ -18,7 +18,7 @@ export const onGet: RequestHandler = async ({ params, send }) => {
   // Security: Only allow access to HLS files
   if (
     !path.includes("/hls/") ||
-    (!path.endsWith(".m3u8") && !path.endsWith(".ts"))
+    (!path.endsWith(".m3u8") && !path.endsWith(".ts") && !path.endsWith(".mp4"))
   ) {
     send(
       new Response('{"error":"Access denied"}', {
@@ -47,13 +47,20 @@ export const onGet: RequestHandler = async ({ params, send }) => {
     const fileContent = await readFile(fullPath);
 
     // Set appropriate MIME type
-    const mimeType = path.endsWith(".m3u8")
-      ? "application/vnd.apple.mpegurl"
-      : "video/mp2t";
+    let mimeType: string;
+    if (path.endsWith(".m3u8")) {
+      mimeType = "application/vnd.apple.mpegurl";
+    } else if (path.endsWith(".ts")) {
+      mimeType = "video/mp2t";
+    } else if (path.endsWith(".mp4")) {
+      mimeType = "video/mp4";
+    } else {
+      mimeType = "application/octet-stream";
+    }
 
     console.log("Serving file with MIME type:", mimeType);
 
-    // For .m3u8 files, serve as text; for .ts files, serve as binary
+    // For .m3u8 files, serve as text; for .ts and .mp4 files, serve as binary
     if (path.endsWith(".m3u8")) {
       // Read and modify the playlist to use absolute URLs
       let playlistContent = fileContent.toString("utf-8");
@@ -64,6 +71,17 @@ export const onGet: RequestHandler = async ({ params, send }) => {
       // Replace relative segment URLs with absolute API URLs
       playlistContent = playlistContent.replace(
         /^(segment_\d+\.ts)$/gm,
+        `/api/video/stream/${dirPath}/$1`
+      );
+
+      // Also handle fmp4 segments and init files
+      playlistContent = playlistContent.replace(
+        /^(init\.mp4)$/gm,
+        `/api/video/stream/${dirPath}/$1`
+      );
+      
+      playlistContent = playlistContent.replace(
+        /^(segment_\d+\.mp4)$/gm,
         `/api/video/stream/${dirPath}/$1`
       );
 
@@ -85,8 +103,8 @@ export const onGet: RequestHandler = async ({ params, send }) => {
         })
       );
     } else {
-      // For .ts files, serve as binary with proper headers
-      console.log("Serving segment file, size:", fileContent.length, "bytes");
+      // For .ts and .mp4 files, serve as binary with proper headers
+      console.log("Serving media file, size:", fileContent.length, "bytes");
 
       send(
         new Response(new Uint8Array(fileContent), {
