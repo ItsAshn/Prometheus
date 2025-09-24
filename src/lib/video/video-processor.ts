@@ -2,11 +2,65 @@ import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import { promises as fs } from "fs";
 import path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
 
-// Set the ffmpeg binary path
-if (ffmpegPath) {
-  ffmpeg.setFfmpegPath(ffmpegPath);
+const execAsync = promisify(exec);
+
+// Function to find and set FFmpeg path with multiple fallbacks
+async function setupFFmpegPath() {
+  const possiblePaths = [
+    "ffmpeg", // System PATH - try this first since we install via apk
+    "/usr/bin/ffmpeg", // Common Linux path
+    "/usr/local/bin/ffmpeg", // Another common Linux path
+    ffmpegPath, // From ffmpeg-static package as fallback
+  ];
+
+  console.log("FFmpeg static path:", ffmpegPath);
+
+  for (const pathToTry of possiblePaths) {
+    if (!pathToTry) continue;
+    
+    try {
+      // Test if ffmpeg is executable at this path
+      const { stdout } = await execAsync(`"${pathToTry}" -version`);
+      if (stdout.includes("ffmpeg version")) {
+        console.log(`FFmpeg found at: ${pathToTry}`);
+        ffmpeg.setFfmpegPath(pathToTry);
+        return pathToTry;
+      }
+    } catch (error) {
+      console.log(`FFmpeg not found at: ${pathToTry}`);
+      continue;
+    }
+  }
+
+  // If ffmpeg-static path exists but isn't executable, try to make it executable
+  if (ffmpegPath) {
+    try {
+      await execAsync(`chmod +x "${ffmpegPath}"`);
+      console.log(`Made FFmpeg executable: ${ffmpegPath}`);
+      ffmpeg.setFfmpegPath(ffmpegPath);
+      return ffmpegPath;
+    } catch (error) {
+      console.error("Failed to make FFmpeg executable:", error);
+    }
+  }
+
+  throw new Error("FFmpeg not found in any of the expected locations");
 }
+
+// Initialize FFmpeg path on module load
+let ffmpegReady = false;
+setupFFmpegPath()
+  .then((path) => {
+    console.log(`FFmpeg setup successful: ${path}`);
+    ffmpegReady = true;
+  })
+  .catch((error) => {
+    console.error("FFmpeg setup failed:", error);
+    ffmpegReady = false;
+  });
 
 export interface VideoMetadata {
   id: string;
@@ -37,6 +91,39 @@ export class VideoProcessor {
     "processing-status.json"
   );
 
+  static async checkFFmpegStatus(): Promise<{
+    available: boolean;
+    path: string | null;
+    version: string | null;
+    error?: string;
+  }> {
+    try {
+      if (!ffmpegReady) {
+        await setupFFmpegPath();
+        ffmpegReady = true;
+      }
+
+      const currentPath = ffmpegPath || "ffmpeg";
+      const { stdout } = await execAsync(`"${currentPath}" -version`);
+      
+      const versionMatch = stdout.match(/ffmpeg version ([^\s]+)/);
+      const version = versionMatch ? versionMatch[1] : "unknown";
+
+      return {
+        available: true,
+        path: currentPath,
+        version,
+      };
+    } catch (error) {
+      return {
+        available: false,
+        path: null,
+        version: null,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
   static async ensureDirectories() {
     await fs.mkdir(this.videosDir, { recursive: true });
     await fs.mkdir(this.hlsDir, { recursive: true });
@@ -49,6 +136,20 @@ export class VideoProcessor {
     title: string
   ): Promise<VideoMetadata> {
     await this.ensureDirectories();
+
+    // Check if FFmpeg is ready
+    if (!ffmpegReady) {
+      console.log("FFmpeg not ready, attempting to setup again...");
+      try {
+        await setupFFmpegPath();
+        ffmpegReady = true;
+        console.log("FFmpeg setup successful on retry");
+      } catch (error) {
+        console.error("FFmpeg setup failed on retry:", error);
+        await this.updateProcessingStatus(videoId, "failed", 0, title);
+        throw new Error(`FFmpeg not available: ${error}`);
+      }
+    }
 
     // Initialize processing status
     await this.updateProcessingStatus(videoId, "processing", 0, title);
