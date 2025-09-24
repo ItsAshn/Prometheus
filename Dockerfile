@@ -38,5 +38,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start the application in preview mode (keeping all dependencies)
-CMD ["pnpm", "preview"]
+# Start the application in preview mode without opening browser
+CMD ["sh", "-c", "pnpm build preview && vite preview --host 0.0.0.0 --port 3000"]
