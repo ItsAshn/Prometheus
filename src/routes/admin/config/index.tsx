@@ -2,7 +2,6 @@ import { component$, useStore, useTask$, $ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
 import { SiteConfigManager } from "~/components/admin/site-config-manager";
-import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -104,7 +103,6 @@ export default component$(() => {
   if (authStore.isLoading) {
     return (
       <div class="admin-container">
-        <ThemeToggle />
         <div class="admin-card">
           <div class="loading-spinner"></div>
           <h2>Loading...</h2>
@@ -116,7 +114,6 @@ export default component$(() => {
   if (!authStore.isAuthenticated || !authStore.user) {
     return (
       <div class="admin-container">
-        <ThemeToggle />
         <div class="admin-card">
           <h2>Access Denied</h2>
           <p>Redirecting to admin login...</p>
@@ -127,7 +124,6 @@ export default component$(() => {
 
   return (
     <div class="admin-dashboard">
-      <ThemeToggle />
       <header class="admin-header">
         <h1>Site Configuration</h1>
         <div class="admin-user-info">

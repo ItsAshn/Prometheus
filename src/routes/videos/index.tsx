@@ -1,28 +1,11 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { VideoList } from "~/components/video/video-list";
-import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 
 export default component$(() => {
   return (
     <div class="public-videos-page">
-      <ThemeToggle />
       <div class="site-container">
-        <header class="site-header">
-          <div class="header-brand">
-            <h1>🎬 Video Library</h1>
-            <p class="header-tagline">Self-Hosted Platform</p>
-          </div>
-          <div class="site-nav">
-            <a href="/" class="nav-link">
-              ← Home
-            </a>
-            <a href="/admin" class="nav-link">
-              Admin
-            </a>
-          </div>
-        </header>
-
         <main class="site-content">
           <div class="videos-intro">
             <h2>🎬 Video Collection</h2>

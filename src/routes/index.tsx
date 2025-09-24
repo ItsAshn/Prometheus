@@ -7,7 +7,6 @@ import {
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
-import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 
 interface SiteConfig {
   channelName: string;
@@ -147,35 +146,6 @@ export default component$(() => {
 
   return (
     <div class="public-site">
-      <ThemeToggle />
-      <header class="site-header">
-        <div class="header-brand">
-          <h1>{channelName}</h1>
-          <p class="header-tagline">Self-Hosted Video Platform</p>
-        </div>
-        <nav class="site-nav">
-          <a href="/videos" class="nav-link">
-            Videos
-          </a>
-          {authStore.isLoading ? (
-            <div class="auth-loading">Loading...</div>
-          ) : authStore.isAuthenticated ? (
-            <div class="admin-status">
-              <span class="admin-welcome">Admin: {authStore.username}</span>
-              <a href="/admin" class="admin-link">
-                Dashboard
-              </a>
-              <button onClick$={handleLogout} class="logout-link">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <a href="/admin" class="admin-link">
-              Admin Login
-            </a>
-          )}
-        </nav>
-      </header>
 
       <main class="site-content">
         <section class="hero">
