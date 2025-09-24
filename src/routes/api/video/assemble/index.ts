@@ -33,20 +33,38 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       contentLength: request.headers.get("content-length"),
     });
 
-    // Parse JSON body properly using request.json()
-    let requestData;
+    // Parse request body - handle both JSON and FormData
+    let requestData: any = {};
+    const contentType = request.headers.get("content-type") || "";
+
     try {
-      requestData = await request.json();
-      console.log("Parsed request data:", requestData);
+      if (contentType.includes("application/json")) {
+        // Handle JSON body
+        requestData = await request.json();
+        console.log("Parsed JSON request data:", requestData);
+      } else if (contentType.includes("multipart/form-data")) {
+        // Handle FormData body
+        const formData = await request.formData();
+        requestData = {
+          uploadId: formData.get("uploadId") as string,
+          fileName: formData.get("fileName") as string,
+          totalChunks: parseInt(formData.get("totalChunks") as string),
+          title: formData.get("title") as string,
+        };
+        console.log("Parsed FormData request data:", requestData);
+      } else {
+        throw new Error(`Unsupported content type: ${contentType}`);
+      }
     } catch (parseError) {
-      console.error("Failed to parse JSON body:", parseError);
+      console.error("Failed to parse request body:", parseError);
       const errorData = {
         success: false,
-        message: "Invalid JSON in request body",
+        message: "Invalid request body format",
         details:
           parseError instanceof Error
             ? parseError.message
             : "Unknown parse error",
+        contentType,
       };
       const errorBody = JSON.stringify(errorData);
       const origin = request.headers.get("origin") || "*";
