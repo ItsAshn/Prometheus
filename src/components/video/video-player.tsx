@@ -46,12 +46,33 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
 
           if (Hls.isSupported()) {
             const hls = new Hls({
-              debug: true,
+              debug: false, // Disable debug in production
               enableWorker: false,
               lowLatencyMode: false,
-              backBufferLength: 30,
-              maxBufferLength: 30,
-              maxMaxBufferLength: 60,
+
+              // Buffer management settings
+              backBufferLength: 90, // Keep more back buffer to handle gaps
+              maxBufferLength: 30, // Forward buffer length
+              maxMaxBufferLength: 90, // Maximum buffer length
+
+              // Gap handling settings
+              nudgeOffset: 0.1, // Small nudge for gaps
+              nudgeMaxRetry: 3, // Max retries for nudging
+              maxFragLookUpTolerance: 0.25, // Fragment lookup tolerance
+
+              // Loading settings
+              maxLoadingDelay: 4,
+              maxBufferHole: 0.5, // Maximum allowed buffer hole
+              highBufferWatchdogPeriod: 2, // Buffer watchdog period
+
+              // Fragment retry settings
+              fragLoadingTimeOut: 20000, // 20 second timeout
+              fragLoadingMaxRetry: 4, // Max fragment retries
+              fragLoadingRetryDelay: 1000, // Retry delay
+
+              // Playback settings
+              startFragPrefetch: true, // Prefetch first fragment
+              testBandwidth: false, // Disable bandwidth testing
             });
 
             hls.loadSource(streamingUrl);
@@ -73,9 +94,39 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 response: data.response,
                 networkDetails: data.networkDetails,
               });
+
+              // Handle specific gap-related errors
+              if (data.details === "bufferSeekOverHole") {
+                console.log(
+                  "Handling buffer seek over hole - attempting recovery"
+                );
+                // Don't treat this as fatal, HLS.js should handle it automatically
+                return;
+              }
+
+              if (data.details === "bufferNudgeOnStall") {
+                console.log("Buffer nudge on stall - normal gap handling");
+                return;
+              }
+
+              // Only treat truly fatal errors as fatal
               if (data.fatal) {
-                error.value = `Failed to load video stream: ${data.details || "Unknown error"}`;
-                isLoading.value = false;
+                switch (data.type) {
+                  case Hls.ErrorTypes.NETWORK_ERROR:
+                    console.log(
+                      "Fatal network error, attempting to recover..."
+                    );
+                    hls.startLoad();
+                    break;
+                  case Hls.ErrorTypes.MEDIA_ERROR:
+                    console.log("Fatal media error, attempting to recover...");
+                    hls.recoverMediaError();
+                    break;
+                  default:
+                    error.value = `Failed to load video stream: ${data.details || "Unknown error"}`;
+                    isLoading.value = false;
+                    break;
+                }
               }
             });
           } else {

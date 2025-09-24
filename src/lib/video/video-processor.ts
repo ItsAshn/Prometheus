@@ -168,30 +168,49 @@ export class VideoProcessor {
 
       ffmpeg(inputPath)
         .inputOptions([
-          "-avoid_negative_ts make_zero", // Fix timing issues with some containers
-          "-fflags +genpts+discardcorrupt", // Handle corrupted frames better
+          "-fflags +genpts", // Generate presentation timestamps
           "-analyzeduration 100M", // Analyze more of the file to get better metadata
           "-probesize 100M", // Probe more of the file for format detection
         ])
         .outputOptions([
+          // Video encoding settings
           "-c:v libx264",
-          "-c:a aac",
-          "-ac 2", // Force stereo audio
-          "-ar 44100", // Force 44.1kHz sample rate
-          "-b:a 128k", // Set audio bitrate
-          "-profile:a aac_low", // Use AAC-LC profile for better compatibility
-          "-f hls",
-          "-hls_time 30", // Increased from 10 to 30 seconds for larger segments
-          "-hls_list_size 0",
-          "-hls_segment_filename",
-          segmentPattern,
           "-preset fast",
           "-crf 23",
-          "-profile:v baseline", // Use H.264 baseline profile for better compatibility
-          "-level 3.0", // Set H.264 level for compatibility
+          "-profile:v main", // Use main profile instead of baseline for better quality
+          "-level 4.0", // Higher level for better compatibility
           "-pix_fmt yuv420p", // Ensure compatible pixel format
-          "-movflags +faststart", // Optimize for streaming
+          
+          // Audio encoding settings
+          "-c:a aac",
+          "-ac 2", // Force stereo audio
+          "-ar 48000", // Use 48kHz sample rate (more standard for video)
+          "-b:a 128k", // Set audio bitrate
+          "-profile:a aac_low", // Use AAC-LC profile for better compatibility
+          
+          // HLS-specific settings
+          "-f hls",
+          "-hls_time 6", // 6-second segments for better streaming balance
+          "-hls_list_size 0", // Keep all segments in playlist
+          "-hls_segment_filename", segmentPattern,
+          
+          // Key frame and GOP settings for better HLS compatibility
+          "-g 60", // Set GOP size to 60 frames (2 seconds at 30fps)
+          "-keyint_min 60", // Minimum keyframe interval
+          "-sc_threshold 0", // Disable scene change detection to ensure regular keyframes
+          
+          // Timing and synchronization improvements
+          "-avoid_negative_ts make_zero", // Fix negative timestamps
+          "-vsync cfr", // Use constant frame rate
+          "-r 30", // Force 30fps output for consistency
+          
+          // Additional HLS flags for better compatibility
+          "-hls_flags independent_segments+program_date_time",
+          "-hls_segment_type fmp4", // Use fragmented MP4 segments for better streaming
+          
+          // Buffer and threading optimizations
           "-max_muxing_queue_size 1024", // Handle complex files better
+          "-threads 0", // Use all available CPU cores
         ])
         .output(playlistPath)
         .on("start", (commandLine) => {
