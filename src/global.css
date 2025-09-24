@@ -2038,3 +2038,258 @@ html {
     scroll-behavior: auto !important;
   }
 }
+
+/* System Update Manager Styles */
+.system-update-manager {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.system-status {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.status-item {
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+}
+
+.status-good {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.status-warning {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
+.status-error {
+  color: var(--error-color);
+  font-weight: 600;
+}
+
+.update-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+}
+
+.update-info h5 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.update-info pre {
+  background: var(--bg-accent);
+  color: var(--text-secondary);
+  padding: 1rem;
+  border-radius: var(--border-radius-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Courier New", monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.update-output {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.update-output h4 {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.update-output pre {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 1.5rem;
+  border-radius: var(--border-radius-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+  border: 1px solid var(--border-color);
+}
+
+.update-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+.refresh-btn,
+.update-btn,
+.restart-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 160px;
+  justify-content: center;
+}
+
+.refresh-btn {
+  background: var(--neutral-500);
+  color: white;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--neutral-600);
+  transform: translateY(-1px);
+}
+
+.update-btn {
+  background: var(--accent-color);
+  color: white;
+}
+
+.update-btn:hover:not(:disabled) {
+  background: var(--accent-color-hover);
+  transform: translateY(-1px);
+}
+
+.restart-btn {
+  background: var(--warning-color);
+  color: white;
+}
+
+.restart-btn:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.refresh-btn:disabled,
+.update-btn:disabled,
+.restart-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.update-warnings {
+  margin-top: 2rem;
+}
+
+.warning-box,
+.info-box {
+  padding: 1.5rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1rem;
+}
+
+.warning-box {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid var(--warning-color);
+  color: var(--text-primary);
+}
+
+.info-box {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--accent-color);
+  color: var(--text-primary);
+}
+
+.warning-box h5,
+.info-box h5 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.warning-box ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.warning-box li {
+  margin-bottom: 0.5rem;
+}
+
+.admin-nav {
+  margin-bottom: 2rem;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.nav-link:hover {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+/* Mobile responsiveness for system update manager */
+@media (max-width: 768px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .update-actions {
+    flex-direction: column;
+  }
+
+  .refresh-btn,
+  .update-btn,
+  .restart-btn {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .system-update-manager {
+    padding: 0 1rem;
+  }
+}

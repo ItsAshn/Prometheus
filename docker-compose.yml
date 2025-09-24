@@ -1,21 +1,72 @@
 version: "3.8"
 
+# SECURITY WARNING:
+# - Never commit .env files with real secrets to Git
+# - Change default passwords before deploying
+# - See SECURITY.md for best practices
+
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
+  qwik-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prometheus
     environment:
       - NODE_ENV=production
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme123}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      - CONTAINER_NAME=prometheus
+      - DOCKER_CONTAINER=true
     env_file:
       - .env
     restart: unless-stopped
     volumes:
-      # Optional: Mount a volume for persistent data if needed
+      # Persistent storage for uploaded videos and processed content
+      - video-data:/app/public/videos
+      - temp-data:/app/temp
       - app-data:/app/data
+      # Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount the docker-compose.yml for updates
+      - ./docker-compose.yml:/app/docker-compose.yml:ro
+      # Optional: Mount local directory for development
+      # - ./public/videos:/app/public/videos
+      # - ./temp:/app/temp
+    networks:
+      - cloudflareTunnel
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits (adjust based on your server capacity)
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+        reservations:
+          memory: 512M
+          cpus: "0.5"
 
 volumes:
+  video-data:
+    driver: local
+  temp-data:
+    driver: local
   app-data:
+    driver: local
+
+networks:
+  cloudflareTunnel:
+    external: true

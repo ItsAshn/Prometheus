@@ -1,6 +1,8 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import type { DocumentHead } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
+import { SystemUpdateManager } from "~/components/admin/system-update-manager";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -11,7 +13,7 @@ interface AdminAuthStore {
   } | null;
 }
 
-export const AdminAuth = component$(() => {
+export default component$(() => {
   const authStore = useStore<AdminAuthStore>({
     isAuthenticated: false,
     isLoading: true,
@@ -57,34 +59,20 @@ export const AdminAuth = component$(() => {
     username: string,
     password: string
   ) {
-    console.log("Server function loginAdmin called with:", {
-      username,
-      passwordLength: password?.length,
-    });
-
     try {
       const response = await fetch(`${this.url.origin}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Forward any existing cookies
           Cookie: this.request.headers.get("cookie") || "",
         },
         body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
-      console.log("Login response:", {
-        status: response.status,
-        success: response.ok,
-        data,
-      });
 
-      // Important: Forward the Set-Cookie header from the API response
       const setCookieHeader = response.headers.get("set-cookie");
       if (setCookieHeader) {
-        console.log("Forwarding Set-Cookie header:", setCookieHeader);
-        // Parse and set the cookie using Qwik's cookie API
         const cookieMatch = setCookieHeader.match(/admin-auth-token=([^;]+)/);
         if (cookieMatch) {
           const tokenValue = cookieMatch[1];
@@ -108,17 +96,8 @@ export const AdminAuth = component$(() => {
   // Server function for admin logout
   const logoutAdmin = server$(async function () {
     try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      // Clear the cookie on the server side as well
       this.cookie.delete("admin-auth-token", { path: "/" });
-
-      return response.ok;
+      return true;
     } catch {
       return false;
     }
@@ -133,10 +112,6 @@ export const AdminAuth = component$(() => {
   });
 
   const handleLogin = $(async () => {
-    console.log("handleLogin called with:", {
-      username: username.value,
-      password: "***",
-    });
     error.value = "";
 
     if (!username.value.trim() || !password.value) {
@@ -145,20 +120,14 @@ export const AdminAuth = component$(() => {
     }
 
     isSubmitting.value = true;
-    console.log("About to call loginAdmin server function");
 
     try {
       const result = await loginAdmin(username.value.trim(), password.value);
-      console.log("loginAdmin result:", result);
 
       if (result.success) {
-        console.log("Login successful, redirecting to /");
         authStore.isAuthenticated = true;
         authStore.user = result.data.user;
-        // Redirect to main page after successful login
-        window.location.href = "/";
       } else {
-        console.log("Login failed:", result.data.message);
         error.value = result.data.message || "Login failed";
       }
     } catch (err) {
@@ -178,14 +147,12 @@ export const AdminAuth = component$(() => {
       password.value = "";
       error.value = "";
 
-      // Clear client-side cookie as additional measure
       if (typeof document !== "undefined") {
         document.cookie =
           "admin-auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       }
 
-      // Force page reload to clear auth state
-      window.location.reload();
+      window.location.href = "/admin";
     } catch {
       error.value = "Logout failed";
     }
@@ -209,7 +176,7 @@ export const AdminAuth = component$(() => {
         <ThemeToggle />
         <div class="admin-dashboard">
           <header class="admin-header">
-            <h1>Admin Dashboard</h1>
+            <h1>System Updates</h1>
             <div class="admin-user-info">
               <span>Welcome, {authStore.user.username}</span>
               <button
@@ -224,77 +191,12 @@ export const AdminAuth = component$(() => {
           </header>
 
           <main class="admin-content">
-            <div class="admin-grid">
-              <div class="admin-card">
-                <h3>🎛️ System Status</h3>
-                <p>Your self-hosted application is running successfully.</p>
-                <p>
-                  Admin access: <span class="status-active">Active</span>
-                </p>
-              </div>
-
-              <div class="admin-card">
-                <h3>📊 Analytics</h3>
-                <p>Public site is accessible to all visitors.</p>
-                <p>Admin area is secured and protected.</p>
-              </div>
-
-              <div class="admin-card">
-                <h3>📹 Video Management</h3>
-                <p>Upload and manage videos for HLS streaming.</p>
-                <p>Convert videos to adaptive streaming format.</p>
-                <p>
-                  <a href="/admin/videos" class="admin-link">
-                    → Manage Videos
-                  </a>
-                </p>
-              </div>
-
-              <div class="admin-card">
-                <h3>⚙️ Site Configuration</h3>
-                <p>Customize your channel name, description, and styling.</p>
-                <p>Upload custom CSS to personalize your site appearance.</p>
-                <p>
-                  <a href="/admin/config" class="admin-link">
-                    → Configure Site
-                  </a>
-                </p>
-              </div>
-
-              <div class="admin-card">
-                <h3>⚙️ System Configuration</h3>
-                <p>
-                  Admin credentials are configured via environment variables.
-                </p>
-                <p>JWT tokens expire after 24 hours.</p>
-              </div>
-
-              <div class="admin-card">
-                <h3>� System Updates</h3>
-                <p>
-                  Pull the latest version and restart your Docker container.
-                </p>
-                <p>
-                  Keep your application up to date with the latest features and
-                  fixes.
-                </p>
-                <p>
-                  <a href="/admin/system-update" class="admin-link">
-                    → Manage Updates
-                  </a>
-                </p>
-              </div>
-
-              <div class="admin-card">
-                <h3>�🔗 Quick Links</h3>
-                <p>
-                  <a href="/" class="admin-link">
-                    ← Back to Public Site
-                  </a>
-                </p>
-                <p>Admin panel features can be added here.</p>
-              </div>
+            <div class="admin-nav">
+              <a href="/admin" class="nav-link">
+                ← Back to Dashboard
+              </a>
             </div>
+            <SystemUpdateManager />
           </main>
         </div>
       </div>
@@ -308,7 +210,7 @@ export const AdminAuth = component$(() => {
         <header class="admin-login-header">
           <h2>🔐 Admin Login</h2>
           <p class="admin-description">
-            Enter your admin credentials to access the dashboard
+            Enter your admin credentials to access the system update panel
           </p>
         </header>
 
@@ -351,13 +253,9 @@ export const AdminAuth = component$(() => {
         </form>
 
         <div class="admin-info">
-          <p class="info-text">
-            <strong>Note:</strong> Admin credentials are configured through
-            environment variables. Check your Docker Compose configuration.
-          </p>
           <p>
-            <a href="/" class="back-link">
-              ← Back to Public Site
+            <a href="/admin" class="back-link">
+              ← Back to Admin Dashboard
             </a>
           </p>
         </div>
@@ -365,3 +263,17 @@ export const AdminAuth = component$(() => {
     </div>
   );
 });
+
+export const head: DocumentHead = {
+  title: "System Updates - Admin Panel",
+  meta: [
+    {
+      name: "description",
+      content: "System update management for self-hosted video platform",
+    },
+    {
+      name: "robots",
+      content: "noindex, nofollow",
+    },
+  ],
+};
