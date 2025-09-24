@@ -28,8 +28,8 @@ RUN pnpm build.server
 # Ensure all files have correct permissions
 RUN chmod -R 755 /app && chmod 666 /app/package.json
 
-# Now we can prune dev dependencies since we have a production build
-RUN pnpm prune --prod
+# Keep all dependencies since Qwik packages are needed at runtime
+# Skip pruning: RUN pnpm prune --prod
 
 # Expose the port the app runs on
 EXPOSE 3000

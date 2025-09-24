@@ -11,9 +11,15 @@ importers:
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
+      compression:
+        specifier: ^1.7.4
+        version: 1.8.1
       cookie:
         specifier: ^1.0.2
         version: 1.0.2
+      dotenv:
+        specifier: ^16.3.2
+        version: 16.6.1
       express:
         specifier: 4.20.0
         version: 4.20.0
@@ -26,6 +32,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      undici:
+        specifier: '*'
+        version: 7.16.0
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -60,12 +69,6 @@ importers:
       '@types/uuid':
         specifier: ^11.0.0
         version: 11.0.0
-      compression:
-        specifier: ^1.7.4
-        version: 1.8.1
-      dotenv:
-        specifier: ^16.3.2
-        version: 16.6.1
       eslint:
         specifier: 9.32.0
         version: 9.32.0
@@ -87,9 +90,6 @@ importers:
       typescript-plugin-css-modules:
         specifier: latest
         version: 5.2.0(typescript@5.4.5)
-      undici:
-        specifier: '*'
-        version: 7.16.0
       vite:
         specifier: 7.1.0
         version: 7.1.0(@types/node@20.19.0)(less@4.4.1)(sass@1.93.1)(stylus@0.62.0)
