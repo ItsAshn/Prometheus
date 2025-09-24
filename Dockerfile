@@ -22,8 +22,11 @@ RUN pnpm install --frozen-lockfile --prod=false
 # Copy source code and configuration files
 COPY . .
 
-# Build the application for production with Express
-RUN pnpm build.server
+# Clean any existing build artifacts and build fresh
+RUN rm -rf dist server .qwik tmp node_modules/.vite node_modules/.cache || true
+
+# Build the application for production with Express (client first, then server)
+RUN pnpm build.client && pnpm build.server
 
 # Ensure all files have correct permissions
 RUN chmod -R 755 /app && chmod 666 /app/package.json
