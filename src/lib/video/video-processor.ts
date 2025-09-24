@@ -175,6 +175,21 @@ export class VideoProcessor {
               );
             }
 
+            // Clean up any temp files in the temp directory that match this video ID
+            try {
+              const tempDir = path.join(process.cwd(), "temp");
+              const tempFiles = await fs.readdir(tempDir);
+              for (const file of tempFiles) {
+                if (file.includes(videoId) && file.endsWith('.mkv')) {
+                  const tempFilePath = path.join(tempDir, file);
+                  await fs.unlink(tempFilePath);
+                  console.log(`Cleaned up temp file: ${tempFilePath}`);
+                }
+              }
+            } catch (error) {
+              console.warn("Error cleaning up temp files:", error);
+            }
+
             const metadata: VideoMetadata = {
               id: videoId,
               title,
@@ -233,7 +248,23 @@ export class VideoProcessor {
 
     try {
       const data = await fs.readFile(metadataPath, "utf-8");
-      return JSON.parse(data);
+      const metadata = JSON.parse(data);
+      
+      // Validate that HLS files still exist and mark videos as available
+      const validatedMetadata = await Promise.all(
+        metadata.map(async (video: VideoMetadata) => {
+          try {
+            const hlsPath = path.join(process.cwd(), "public", video.hlsPath);
+            await fs.access(hlsPath);
+            return { ...video, status: "completed" as const };
+          } catch {
+            // Mark as failed if HLS files are missing
+            return { ...video, status: "failed" as const };
+          }
+        })
+      );
+      
+      return validatedMetadata;
     } catch {
       return [];
     }

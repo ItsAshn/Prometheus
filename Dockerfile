@@ -1,5 +1,5 @@
-# Use Node.js 20 with Alpine for smaller image size
-FROM node:20-alpine
+# Use Node.js 22 LTS with Alpine for smaller image size and better security
+FROM node:22-alpine
 
 # Install ffmpeg for video processing, git for updates, and docker CLI for container management
 RUN apk add --no-cache ffmpeg git docker-cli
@@ -25,8 +25,11 @@ COPY . .
 # Clean any existing build artifacts and build fresh
 RUN rm -rf dist server .qwik tmp node_modules/.vite node_modules/.cache || true
 
-# Build the application for production with Express (client first, then server)
-RUN pnpm build.client && pnpm build.server
+# Build the application for production with optimizations
+RUN NODE_ENV=production pnpm build.client && NODE_ENV=production pnpm build.server
+
+# Run cleanup to remove build artifacts and temp files
+RUN node scripts/cleanup.js || true
 
 # Ensure all files have correct permissions
 RUN chmod -R 755 /app && chmod 666 /app/package.json

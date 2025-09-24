@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface QwikCityPlatform extends PlatformNode {}
 }
 
@@ -48,15 +49,27 @@ const { router, notFound } = createQwikCity({
 // https://expressjs.com/
 const app = express();
 
-// Enable gzip compression
-// app.use(compression());
+// Enable gzip compression for better performance
+import compression from "compression";
+app.use(
+  compression({
+    level: 6, // Compression level (1-9, 6 is good balance)
+    threshold: 1024, // Only compress responses larger than 1KB
+    filter: (req, res) => {
+      // Don't compress if request doesn't accept encoding
+      if (req.headers["x-no-compression"]) return false;
+      // Use compression filter
+      return compression.filter(req, res);
+    },
+  })
+);
 
 // Static asset handlers
 // https://expressjs.com/en/starter/static-files.html
 app.use(`/build`, express.static(buildDir, { immutable: true, maxAge: "1y" }));
 app.use(
   `/assets`,
-  express.static(assetsDir, { immutable: true, maxAge: "1y" }),
+  express.static(assetsDir, { immutable: true, maxAge: "1y" })
 );
 app.use(express.static(distDir, { redirect: false }));
 
@@ -68,6 +81,5 @@ app.use(notFound);
 
 // Start the express server
 app.listen(PORT, () => {
-  /* eslint-disable */
   console.log(`Server started: http://localhost:${PORT}/`);
 });

@@ -1,13 +1,11 @@
-import {
-  component$,
-  useStore,
-  useTask$,
-  useVisibleTask$,
-  $,
-} from "@builder.io/qwik";
+import { component$, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
 import { Sidebar } from "~/components/sidebar/sidebar";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
+import {
+  checkAdminAuthServer,
+  logoutAdminServer,
+} from "~/lib/admin-auth-utils";
 
 interface SiteConfig {
   channelName: string;
@@ -27,35 +25,6 @@ export const GlobalLayout = component$(() => {
     isLoadingConfig: true,
   });
 
-  // Server function to check admin auth status
-  const checkAdminAuth = server$(async function () {
-    try {
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      if (verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        return {
-          isAuthenticated: true,
-          username: data.user.username,
-        };
-      }
-
-      return {
-        isAuthenticated: false,
-        username: "",
-      };
-    } catch {
-      return {
-        isAuthenticated: false,
-        username: "",
-      };
-    }
-  });
-
   // Server function to load site configuration
   const loadSiteConfig = server$(async function () {
     try {
@@ -70,34 +39,15 @@ export const GlobalLayout = component$(() => {
     }
   });
 
-  // Server function for admin logout
-  const logoutAdmin = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      // Clear the cookie on the server side as well
-      this.cookie.delete("admin-auth-token", { path: "/" });
-
-      return response.ok;
-    } catch {
-      return false;
-    }
-  });
-
   // Check authentication status and load site config on component load
   useTask$(async () => {
     const [authStatus, configResult] = await Promise.all([
-      checkAdminAuth(),
+      checkAdminAuthServer(),
       loadSiteConfig(),
     ]);
 
     authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.username;
+    authStore.username = authStatus.user?.username || "";
     authStore.isLoading = false;
 
     if (configResult.success) {
@@ -106,21 +56,9 @@ export const GlobalLayout = component$(() => {
     siteStore.isLoadingConfig = false;
   });
 
-  // Also check when page becomes visible (after redirect)
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(() => {
-    const recheckAuth = async () => {
-      const status = await checkAdminAuth();
-      authStore.isAuthenticated = status.isAuthenticated;
-      authStore.username = status.username;
-      authStore.isLoading = false;
-    };
-    recheckAuth();
-  });
-
   const handleLogout = $(async () => {
     try {
-      await logoutAdmin();
+      await logoutAdminServer();
       authStore.isAuthenticated = false;
       authStore.username = "";
 

@@ -29,10 +29,17 @@ export const AdminAuth = component$(() => {
 
   // Check authentication status on component load
   useTask$(async () => {
-    const status = await checkAdminAuthServer();
-    authStore.isAuthenticated = status.isAuthenticated;
-    authStore.user = status.user;
-    authStore.isLoading = false;
+    try {
+      const status = await checkAdminAuthServer();
+      authStore.isAuthenticated = status.isAuthenticated;
+      authStore.user = status.user;
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      authStore.isAuthenticated = false;
+      authStore.user = null;
+    } finally {
+      authStore.isLoading = false;
+    }
   });
 
   const handleLogin = $(async () => {
