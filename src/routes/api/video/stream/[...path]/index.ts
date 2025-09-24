@@ -2,6 +2,21 @@ import type { RequestHandler } from "@builder.io/qwik-city";
 import { readFile } from "fs/promises";
 import { join } from "path";
 
+// Handle OPTIONS requests for CORS preflight
+export const onOptions: RequestHandler = async ({ send }) => {
+  send(
+    new Response(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "Range, Content-Range, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    })
+  );
+};
+
 export const onGet: RequestHandler = async ({ params, send }) => {
   const path = params.path;
 
@@ -79,7 +94,7 @@ export const onGet: RequestHandler = async ({ params, send }) => {
         /^(init\.mp4)$/gm,
         `/api/video/stream/${dirPath}/$1`
       );
-      
+
       playlistContent = playlistContent.replace(
         /^(segment_\d+\.mp4)$/gm,
         `/api/video/stream/${dirPath}/$1`
@@ -106,19 +121,35 @@ export const onGet: RequestHandler = async ({ params, send }) => {
       // For .ts and .mp4 files, serve as binary with proper headers
       console.log("Serving media file, size:", fileContent.length, "bytes");
 
+      // Add streaming-optimized headers for large video segments
+      const headers = new Headers({
+        "Content-Type": mimeType,
+        "Content-Length": fileContent.length.toString(),
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "Range, Content-Range, Authorization",
+        "Access-Control-Expose-Headers":
+          "Content-Length, Content-Range, Accept-Ranges",
+        // Additional headers for better streaming performance
+        Connection: "keep-alive",
+        "Transfer-Encoding": "identity", // Disable chunked encoding for video
+      });
+
+      // For large files (>5MB), add additional streaming hints
+      if (fileContent.length > 5 * 1024 * 1024) {
+        headers.set("X-Content-Type-Options", "nosniff");
+        headers.set("Content-Disposition", "inline");
+        console.log(
+          "Large file detected, adding streaming optimization headers"
+        );
+      }
+
       send(
         new Response(new Uint8Array(fileContent), {
           status: 200,
-          headers: {
-            "Content-Type": mimeType,
-            "Content-Length": fileContent.length.toString(),
-            "Accept-Ranges": "bytes",
-            "Cache-Control": "public, max-age=3600",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET",
-            "Access-Control-Allow-Headers": "Range, Content-Range",
-            "Access-Control-Expose-Headers": "Content-Length, Content-Range",
-          },
+          headers,
         })
       );
     }

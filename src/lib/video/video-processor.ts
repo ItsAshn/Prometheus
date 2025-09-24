@@ -175,11 +175,13 @@ export class VideoProcessor {
         .outputOptions([
           // Video encoding settings
           "-c:v libx264",
-          "-preset fast",
-          "-crf 23",
+          "-preset medium", // Better compression than 'fast'
+          "-crf 25", // Slightly higher CRF for smaller files (was 23)
           "-profile:v main", // Use main profile instead of baseline for better quality
           "-level 4.0", // Higher level for better compatibility
           "-pix_fmt yuv420p", // Ensure compatible pixel format
+          "-maxrate 5000k", // Limit bitrate to 5Mbps for smaller segments
+          "-bufsize 10000k", // Buffer size for rate control
           
           // Audio encoding settings
           "-c:a aac",
@@ -190,7 +192,7 @@ export class VideoProcessor {
           
           // HLS-specific settings
           "-f hls",
-          "-hls_time 6", // 6-second segments for better streaming balance
+          "-hls_time 4", // 4-second segments for better streaming and smaller file sizes
           "-hls_list_size 0", // Keep all segments in playlist
           "-hls_segment_filename", segmentPattern,
           
