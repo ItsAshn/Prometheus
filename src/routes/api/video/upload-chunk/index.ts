@@ -3,15 +3,17 @@ import { promises as fs } from "fs";
 import path from "path";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
-export const onOptions: RequestHandler = async ({ send }) => {
+export const onOptions: RequestHandler = async ({ send, request }) => {
   // Handle CORS preflight requests
+  const origin = request.headers.get("origin") || "*";
   send(
     new Response(null, {
       status: 200,
       headers: {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Max-Age": "86400",
       },
     })
@@ -20,6 +22,16 @@ export const onOptions: RequestHandler = async ({ send }) => {
 
 export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
+    // Debug request information
+    console.log("Upload chunk request:", {
+      method: request.method,
+      url: request.url,
+      headers: Object.fromEntries(request.headers.entries()),
+      userAgent: request.headers.get("user-agent"),
+      contentType: request.headers.get("content-type"),
+      origin: request.headers.get("origin"),
+    });
+
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
     console.log("Chunk upload - Cookie check:", {
@@ -28,6 +40,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       tokenPreview: adminToken
         ? adminToken.value.substring(0, 20) + "..."
         : "none",
+      allCookies: Object.keys(cookie.getAll()),
     });
 
     if (!adminToken) {
@@ -36,11 +49,15 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         message: "Admin authentication required",
       };
       const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
       send(
         new Response(errorBody, {
           status: 401,
           headers: {
             "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
           },
         })
       );
@@ -62,11 +79,15 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         message: "Invalid or expired token",
       };
       const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
       send(
         new Response(errorBody, {
           status: 401,
           headers: {
             "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
           },
         })
       );
@@ -93,11 +114,15 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         message: "Missing required chunk data",
       };
       const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
       send(
         new Response(errorBody, {
           status: 400,
           headers: {
             "Content-Type": "application/json",
+            "Content-Length": errorBody.length.toString(),
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
           },
         })
       );
@@ -146,14 +171,17 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     const responseBody = JSON.stringify(responseData);
 
+    const origin = request.headers.get("origin") || "*";
     send(
       new Response(responseBody, {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          "Content-Length": responseBody.length.toString(),
+          "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "POST",
-          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type, Cookie",
+          "Access-Control-Allow-Credentials": "true",
         },
       })
     );
@@ -167,14 +195,17 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     const errorBody = JSON.stringify(errorData);
 
+    const origin = request.headers.get("origin") || "*";
     send(
       new Response(errorBody, {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
+          "Content-Length": errorBody.length.toString(),
+          "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "POST",
-          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type, Cookie",
+          "Access-Control-Allow-Credentials": "true",
         },
       })
     );

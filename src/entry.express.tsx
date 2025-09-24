@@ -35,19 +35,27 @@ const PORT = process.env.PORT ?? 3000;
 const { router, notFound } = createQwikCity({
   render,
   qwikCityPlan,
-  // getOrigin(req) {
-  //   // If deploying under a proxy, you may need to build the origin from the request headers
-  //   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-  //   const protocol = req.headers["x-forwarded-proto"] ?? "http";
-  //   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Host
-  //   const host = req.headers["x-forwarded-host"] ?? req.headers.host;
-  //   return `${protocol}://${host}`;
-  // }
+  getOrigin(req) {
+    // Handle proxy headers for production deployment
+    const protocol =
+      (req.headers["x-forwarded-proto"] ??
+      req.headers["x-forwarded-ssl"] === "on")
+        ? "https"
+        : "http";
+    const host =
+      req.headers["x-forwarded-host"] ??
+      req.headers["x-real-ip"] ??
+      req.headers.host;
+    return `${protocol}://${host}`;
+  },
 });
 
 // Create the express server
 // https://expressjs.com/
 const app = express();
+
+// Trust proxy for production deployment
+app.set("trust proxy", true);
 
 // Enable gzip compression for better performance
 import compression from "compression";
@@ -63,6 +71,10 @@ app.use(
     },
   })
 );
+
+// Configure body parsing limits for large file uploads
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // Static asset handlers
 // https://expressjs.com/en/starter/static-files.html

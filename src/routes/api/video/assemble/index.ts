@@ -4,15 +4,17 @@ import path from "path";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
-export const onOptions: RequestHandler = async ({ send }) => {
+export const onOptions: RequestHandler = async ({ send, request }) => {
   // Handle CORS preflight requests
+  const origin = request.headers.get("origin") || "*";
   send(
     new Response(null, {
       status: 200,
       headers: {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": origin,
         "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Max-Age": "86400",
       },
     })

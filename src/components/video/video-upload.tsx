@@ -64,6 +64,26 @@ export const VideoUpload = component$(() => {
     // Only run on client side
     if (typeof window === "undefined") return;
 
+    // Check authentication before starting upload
+    try {
+      const authCheck = await fetch("/api/auth/check", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!authCheck.ok) {
+        message.value = "Please log in to upload videos";
+        messageType.value = "error";
+        setTimeout(() => {
+          window.location.href = "/admin";
+        }, 2000);
+        return;
+      }
+    } catch (authError) {
+      console.warn("Auth check failed:", authError);
+      // Continue anyway, let the upload endpoint handle auth
+    }
+
     isUploading.value = true;
     uploadProgress.value = 0;
     message.value = "Uploading video...";
@@ -114,6 +134,21 @@ export const VideoUpload = component$(() => {
               } catch (textError) {
                 console.warn("Could not read error response text:", textError);
                 errorText = `HTTP ${response.status} ${response.statusText}`;
+              }
+
+              // If it's an authentication error, redirect to login
+              if (response.status === 401 || response.status === 403) {
+                console.error(
+                  "Authentication failed during upload:",
+                  errorText
+                );
+                message.value = "Authentication failed. Please log in again.";
+                messageType.value = "error";
+                // Redirect to login after a delay
+                setTimeout(() => {
+                  window.location.href = "/admin";
+                }, 2000);
+                return;
               }
 
               // If it's a server error (5xx), retry
