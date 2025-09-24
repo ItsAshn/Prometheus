@@ -1,6 +1,10 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
-import { server$ } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
+import {
+  checkAdminAuthServer,
+  loginAdminServer,
+  logoutAdminServer,
+} from "~/lib/admin-auth-utils";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -23,110 +27,9 @@ export const AdminAuth = component$(() => {
   const error = useSignal("");
   const isSubmitting = useSignal(false);
 
-  // Server function to check admin auth status
-  const checkAdminAuth = server$(async function () {
-    try {
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      if (verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        return {
-          isAuthenticated: true,
-          user: data.user,
-        };
-      }
-
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    } catch {
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    }
-  });
-
-  // Server function for admin login
-  const loginAdmin = server$(async function (
-    username: string,
-    password: string
-  ) {
-    console.log("Server function loginAdmin called with:", {
-      username,
-      passwordLength: password?.length,
-    });
-
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // Forward any existing cookies
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-      console.log("Login response:", {
-        status: response.status,
-        success: response.ok,
-        data,
-      });
-
-      // Important: Forward the Set-Cookie header from the API response
-      const setCookieHeader = response.headers.get("set-cookie");
-      if (setCookieHeader) {
-        console.log("Forwarding Set-Cookie header:", setCookieHeader);
-        // Parse and set the cookie using Qwik's cookie API
-        const cookieMatch = setCookieHeader.match(/admin-auth-token=([^;]+)/);
-        if (cookieMatch) {
-          const tokenValue = cookieMatch[1];
-          this.cookie.set("admin-auth-token", tokenValue, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-            path: "/",
-          });
-        }
-      }
-
-      return { success: response.ok, data };
-    } catch (error) {
-      console.error("Login server function error:", error);
-      return { success: false, data: { message: "Network error" } };
-    }
-  });
-
-  // Server function for admin logout
-  const logoutAdmin = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      // Clear the cookie on the server side as well
-      this.cookie.delete("admin-auth-token", { path: "/" });
-
-      return response.ok;
-    } catch {
-      return false;
-    }
-  });
-
   // Check authentication status on component load
   useTask$(async () => {
-    const status = await checkAdminAuth();
+    const status = await checkAdminAuthServer();
     authStore.isAuthenticated = status.isAuthenticated;
     authStore.user = status.user;
     authStore.isLoading = false;
@@ -148,13 +51,16 @@ export const AdminAuth = component$(() => {
     console.log("About to call loginAdmin server function");
 
     try {
-      const result = await loginAdmin(username.value.trim(), password.value);
+      const result = await loginAdminServer(
+        username.value.trim(),
+        password.value
+      );
       console.log("loginAdmin result:", result);
 
       if (result.success) {
         console.log("Login successful, redirecting to /");
         authStore.isAuthenticated = true;
-        authStore.user = result.data.user;
+        authStore.user = result.data.user || null;
         // Redirect to main page after successful login
         window.location.href = "/";
       } else {
@@ -171,7 +77,7 @@ export const AdminAuth = component$(() => {
 
   const handleLogout = $(async () => {
     try {
-      await logoutAdmin();
+      await logoutAdminServer();
       authStore.isAuthenticated = false;
       authStore.user = null;
       username.value = "";

@@ -1,8 +1,12 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
-import { server$ } from "@builder.io/qwik-city";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import { SystemUpdateManager } from "~/components/admin/system-update-manager";
+import {
+  checkAdminAuthServer,
+  loginAdminServer,
+  logoutAdminServer,
+} from "~/lib/admin-auth-utils";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -25,87 +29,9 @@ export default component$(() => {
   const error = useSignal("");
   const isSubmitting = useSignal(false);
 
-  // Server function to check admin auth status
-  const checkAdminAuth = server$(async function () {
-    try {
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      if (verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        return {
-          isAuthenticated: true,
-          user: data.user,
-        };
-      }
-
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    } catch {
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    }
-  });
-
-  // Server function for admin login
-  const loginAdmin = server$(async function (
-    username: string,
-    password: string
-  ) {
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      const setCookieHeader = response.headers.get("set-cookie");
-      if (setCookieHeader) {
-        const cookieMatch = setCookieHeader.match(/admin-auth-token=([^;]+)/);
-        if (cookieMatch) {
-          const tokenValue = cookieMatch[1];
-          this.cookie.set("admin-auth-token", tokenValue, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000,
-            path: "/",
-          });
-        }
-      }
-
-      return { success: response.ok, data };
-    } catch (error) {
-      console.error("Login server function error:", error);
-      return { success: false, data: { message: "Network error" } };
-    }
-  });
-
-  // Server function for admin logout
-  const logoutAdmin = server$(async function () {
-    try {
-      this.cookie.delete("admin-auth-token", { path: "/" });
-      return true;
-    } catch {
-      return false;
-    }
-  });
-
   // Check authentication status on component load
   useTask$(async () => {
-    const status = await checkAdminAuth();
+    const status = await checkAdminAuthServer();
     authStore.isAuthenticated = status.isAuthenticated;
     authStore.user = status.user;
     authStore.isLoading = false;
@@ -122,11 +48,14 @@ export default component$(() => {
     isSubmitting.value = true;
 
     try {
-      const result = await loginAdmin(username.value.trim(), password.value);
+      const result = await loginAdminServer(
+        username.value.trim(),
+        password.value
+      );
 
       if (result.success) {
         authStore.isAuthenticated = true;
-        authStore.user = result.data.user;
+        authStore.user = result.data.user || null;
       } else {
         error.value = result.data.message || "Login failed";
       }
@@ -140,7 +69,7 @@ export default component$(() => {
 
   const handleLogout = $(async () => {
     try {
-      await logoutAdmin();
+      await logoutAdminServer();
       authStore.isAuthenticated = false;
       authStore.user = null;
       username.value = "";

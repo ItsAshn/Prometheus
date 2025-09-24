@@ -1,7 +1,10 @@
 import { component$, useStore, useTask$, $ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { server$ } from "@builder.io/qwik-city";
 import { SiteConfigManager } from "~/components/admin/site-config-manager";
+import {
+  checkAdminAuthServer,
+  logoutAdminServer,
+} from "~/lib/admin-auth-utils";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -19,57 +22,9 @@ export default component$(() => {
     user: null,
   });
 
-  // Server function to check admin auth status
-  const checkAdminAuth = server$(async function () {
-    try {
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      if (verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        return {
-          isAuthenticated: true,
-          user: data.user,
-        };
-      }
-
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    } catch {
-      return {
-        isAuthenticated: false,
-        user: null,
-      };
-    }
-  });
-
-  // Server function for admin logout
-  const logoutAdmin = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      // Clear the cookie on the server side as well
-      this.cookie.delete("admin-auth-token", { path: "/" });
-
-      return response.ok;
-    } catch {
-      return false;
-    }
-  });
-
   // Check authentication status on component load
   useTask$(async () => {
-    const status = await checkAdminAuth();
+    const status = await checkAdminAuthServer();
     authStore.isAuthenticated = status.isAuthenticated;
     authStore.user = status.user;
     authStore.isLoading = false;
@@ -82,7 +37,7 @@ export default component$(() => {
 
   const handleLogout = $(async () => {
     try {
-      await logoutAdmin();
+      await logoutAdminServer();
       authStore.isAuthenticated = false;
       authStore.user = null;
 
