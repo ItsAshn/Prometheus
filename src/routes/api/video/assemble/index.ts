@@ -41,7 +41,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       const reader = request.body.getReader();
       const chunks = [];
       let totalLength = 0;
-      
+
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -49,7 +49,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           chunks.push(value);
           totalLength += value.length;
         }
-        
+
         // Reconstruct the body text
         const bodyBytes = new Uint8Array(totalLength);
         let offset = 0;
@@ -57,24 +57,29 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           bodyBytes.set(chunk, offset);
           offset += chunk.length;
         }
-        
+
         const bodyText = new TextDecoder().decode(bodyBytes);
         console.log("Raw body from stream:", bodyText.substring(0, 200));
-        
+
         if (!bodyText || bodyText.trim() === "") {
           throw new Error("Request body is empty");
         }
-        
+
         const requestData = JSON.parse(bodyText);
         console.log("Parsed request data:", requestData);
-        
+
         ({ uploadId, fileName, totalChunks, title } = requestData);
-        
+
         if (!uploadId || !fileName || !totalChunks || !title) {
           const errorData = {
             success: false,
             message: "Missing required assembly data",
-            received: { uploadId: !!uploadId, fileName: !!fileName, totalChunks: !!totalChunks, title: !!title },
+            received: {
+              uploadId: !!uploadId,
+              fileName: !!fileName,
+              totalChunks: !!totalChunks,
+              title: !!title,
+            },
           };
           const errorBody = JSON.stringify(errorData);
           const origin = request.headers.get("origin") || "*";
@@ -91,16 +96,20 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           );
           return;
         }
-        
+
         // Continue with the rest of the logic...
-        console.log(`Assembly request: uploadId=${uploadId}, fileName=${fileName}, totalChunks=${totalChunks}, title=${title}`);
-        
+        console.log(
+          `Assembly request: uploadId=${uploadId}, fileName=${fileName}, totalChunks=${totalChunks}, title=${title}`
+        );
       } catch (streamError) {
         console.error("Failed to read body stream:", streamError);
         const errorData = {
           success: false,
           message: "Failed to read request body",
-          details: streamError instanceof Error ? streamError.message : "Unknown stream error",
+          details:
+            streamError instanceof Error
+              ? streamError.message
+              : "Unknown stream error",
         };
         const errorBody = JSON.stringify(errorData);
         const origin = request.headers.get("origin") || "*";
@@ -179,12 +188,12 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       return;
     }
 
-        // Check that all chunks exist
-        const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
-        const chunks = [];
+    // Check that all chunks exist
+    const tempDir = path.join(process.cwd(), "temp", "uploads", uploadId);
+    const chunks = [];
 
-        console.log(`Working directory: ${process.cwd()}`);
-        console.log(`Checking temp directory: ${tempDir}`);
+    console.log(`Working directory: ${process.cwd()}`);
+    console.log(`Checking temp directory: ${tempDir}`);
 
     // Check if temp directory exists
     try {
