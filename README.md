@@ -217,3 +217,13 @@ For commercial licensing or questions about usage rights, please contact the pro
 ---
 
 **Ready to take control of your content?** Star ⭐ this project and start building your independent video platform today!
+
+## Express Server
+
+This app has a minimal [Express server](https://expressjs.com/) implementation. After running a full build, you can preview the build using the command:
+
+```
+pnpm serve
+```
+
+Then visit [http://localhost:8080/](http://localhost:8080/)

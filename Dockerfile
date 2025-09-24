@@ -22,14 +22,14 @@ RUN pnpm install --frozen-lockfile --prod=false
 # Copy source code and configuration files
 COPY . .
 
-# Build the application
-RUN pnpm build
+# Build the application for production with Express
+RUN pnpm build.server
 
 # Ensure all files have correct permissions
 RUN chmod -R 755 /app && chmod 666 /app/package.json
 
-# Keep all dependencies since preview command needs dev dependencies
-# Skip pruning: RUN pnpm prune --prod
+# Now we can prune dev dependencies since we have a production build
+RUN pnpm prune --prod
 
 # Expose the port the app runs on
 EXPOSE 3000
@@ -38,5 +38,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
 
-# Start the application in preview mode without opening browser  
-CMD ["sh", "-c", "pnpm qwik build preview && pnpm exec vite preview --host 0.0.0.0 --port 3000"]
+# Start the Express server
+CMD ["pnpm", "serve"]
