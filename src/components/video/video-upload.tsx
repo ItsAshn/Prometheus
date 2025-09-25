@@ -362,7 +362,7 @@ export const VideoUpload = component$(() => {
             disabled={
               isUploading.value || !selectedFile.value || !title.value.trim()
             }
-            class="upload-btn"
+            class="btn btn-primary btn-lg"
           >
             {isUploading.value ? "Uploading..." : "Upload Video"}
           </button>

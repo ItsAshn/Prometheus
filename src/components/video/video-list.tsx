@@ -118,7 +118,7 @@ export const VideoList = component$<VideoListProps>((props) => {
       <div class="video-list-error">
         <div class="error-icon">⚠️</div>
         <p>{error.value}</p>
-        <button onClick$={loadVideos} class="retry-btn">
+        <button onClick$={loadVideos} class="btn btn-primary">
           Try Again
         </button>
       </div>
@@ -146,7 +146,7 @@ export const VideoList = component$<VideoListProps>((props) => {
           <div class="player-header">
             <button
               onClick$={() => (selectedVideo.value = null)}
-              class="back-btn"
+              class="btn btn-secondary"
             >
               ← Back to List
             </button>
@@ -188,14 +188,14 @@ export const VideoList = component$<VideoListProps>((props) => {
               <div class="video-actions">
                 <button
                   onClick$={() => (selectedVideo.value = video)}
-                  class="play-btn"
+                  class="btn btn-primary btn-sm flex-1"
                 >
                   Play
                 </button>
                 {props.isAdmin && (
                   <button
                     onClick$={() => deleteVideo(video.id)}
-                    class="delete-btn"
+                    class="btn btn-destructive btn-sm"
                   >
                     Delete
                   </button>

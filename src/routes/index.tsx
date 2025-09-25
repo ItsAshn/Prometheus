@@ -146,7 +146,6 @@ export default component$(() => {
 
   return (
     <div class="public-site">
-
       <main class="site-content">
         <section class="hero">
           <div class="hero-content">
@@ -178,16 +177,19 @@ export default component$(() => {
                 full control over your video platform.
               </p>
               <div class="admin-actions">
-                <a href="/admin" class="admin-action-btn">
+                <a href="/admin" class="btn btn-primary btn-lg">
                   🎛️ Dashboard
                 </a>
-                <a href="/admin/videos" class="admin-action-btn">
+                <a href="/admin/videos" class="btn btn-primary btn-lg">
                   📹 Manage Videos
                 </a>
-                <a href="/admin/config" class="admin-action-btn">
+                <a href="/admin/config" class="btn btn-primary btn-lg">
                   ⚙️ Settings
                 </a>
-                <button onClick$={handleLogout} class="logout-action-btn">
+                <button
+                  onClick$={handleLogout}
+                  class="btn btn-destructive btn-lg"
+                >
                   🚪 Logout
                 </button>
               </div>

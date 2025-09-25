@@ -111,7 +111,7 @@ export default component$(() => {
               <button
                 type="button"
                 onClick$={handleLogout}
-                class="logout-btn"
+                class="btn btn-destructive"
                 disabled={isSubmitting.value}
               >
                 Logout
@@ -174,7 +174,7 @@ export default component$(() => {
 
           <button
             type="submit"
-            class="submit-btn"
+            class="btn btn-primary btn-full btn-lg"
             disabled={isSubmitting.value}
           >
             {isSubmitting.value ? "Logging in..." : "Login"}

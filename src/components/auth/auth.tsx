@@ -145,7 +145,7 @@ export const Auth = component$(() => {
         <div class="auth-card">
           <h2>Welcome back!</h2>
           <p>You are successfully logged in.</p>
-          <button type="button" onClick$={logout} class="logout-btn">
+          <button type="button" onClick$={logout} class="btn btn-destructive">
             Logout
           </button>
         </div>
@@ -206,7 +206,7 @@ export const Auth = component$(() => {
 
           {error.value && <div class="error-message">{error.value}</div>}
 
-          <button type="submit" class="submit-btn">
+          <button type="submit" class="btn btn-primary btn-full btn-lg">
             {authStore.isFirstTime ? "Create Account" : "Login"}
           </button>
         </form>
@@ -230,7 +230,7 @@ export const Auth = component$(() => {
                   error.value = "";
                 }
               }}
-              class="reset-btn"
+              class="btn btn-destructive btn-sm"
             >
               Reset Credentials
             </button>

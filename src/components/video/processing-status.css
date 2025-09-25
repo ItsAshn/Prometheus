@@ -1,0 +1,59 @@
+/* Processing Status Component Layout Styles
+ * This file contains only layout, positioning, and structural styles.
+ * Colors, borders, shadows are defined in global.css using design tokens.
+ */
+
+.processing-status-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.processing-item-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.processing-header-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.progress-layout {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-text-layout {
+  flex-shrink: 0;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.video-title-layout {
+  flex: 1;
+  word-break: break-word;
+  min-width: 0; /* Ensures flexbox can shrink text */
+}
+
+/* Responsive adjustments for processing status */
+@media (max-width: 640px) {
+  .processing-header-layout {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .progress-layout {
+    gap: 0.75rem;
+  }
+
+  .progress-text-layout {
+    min-width: 3rem;
+    font-size: 0.75rem;
+  }
+}

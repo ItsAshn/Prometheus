@@ -216,7 +216,11 @@ export const SystemUpdateManager = component$(() => {
         {store.error && (
           <div class="error-message">
             {store.error}
-            <button type="button" onClick$={clearMessages} class="close-btn">
+            <button
+              type="button"
+              onClick$={clearMessages}
+              class="btn btn-ghost btn-sm absolute top-2 right-3 p-1 w-6 h-6"
+            >
               ×
             </button>
           </div>
@@ -225,7 +229,11 @@ export const SystemUpdateManager = component$(() => {
         {store.successMessage && (
           <div class="success-message">
             {store.successMessage}
-            <button type="button" onClick$={clearMessages} class="close-btn">
+            <button
+              type="button"
+              onClick$={clearMessages}
+              class="btn btn-ghost btn-sm absolute top-2 right-3 p-1 w-6 h-6"
+            >
               ×
             </button>
           </div>
@@ -304,7 +312,7 @@ export const SystemUpdateManager = component$(() => {
           <button
             type="button"
             onClick$={handleRefreshStatus}
-            class="refresh-btn"
+            class="btn btn-secondary btn-lg"
             disabled={store.isUpdating || store.isLoading}
           >
             🔄 Refresh Status
@@ -313,7 +321,7 @@ export const SystemUpdateManager = component$(() => {
           <button
             type="button"
             onClick$={handleUpdate}
-            class="update-btn"
+            class="btn btn-primary btn-lg"
             disabled={store.isUpdating || store.isLoading}
           >
             {store.isUpdating ? "Updating..." : "🚀 Update & Restart"}
@@ -323,7 +331,7 @@ export const SystemUpdateManager = component$(() => {
             <button
               type="button"
               onClick$={handleRestart}
-              class="restart-btn"
+              class="btn btn-warning btn-lg"
               disabled={store.isUpdating || store.isLoading}
             >
               {store.isUpdating ? "Restarting..." : "🔄 Restart Container"}

@@ -118,7 +118,7 @@ export const Sidebar = component$<SidebarProps>(
                           onLogout();
                           closeSidebar();
                         }}
-                        class="sidebar-logout-btn"
+                        class="btn btn-destructive btn-sm mx-4"
                       >
                         <span class="sidebar-icon">🚪</span>
                         Logout

@@ -1,4 +1,5 @@
 import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
+import "./processing-status.css";
 
 interface ProcessingStatus {
   videoId: string;
@@ -47,172 +48,68 @@ export const ProcessingStatus = component$(() => {
   }
 
   return (
-    <div class="processing-status-container">
-      <div class="processing-status-card">
-        <h3>🔄 Processing Videos</h3>
-
-        {processingVideos.value.map((video) => (
-          <div key={video.videoId} class="processing-item">
-            <div class="processing-header">
-              <span class="video-title">{video.title}</span>
-              <span class={`status-badge status-${video.status}`}>
-                {video.status === "processing"
-                  ? "Processing"
-                  : video.status === "completed"
-                    ? "Completed"
-                    : "Failed"}
-              </span>
-            </div>
-
-            {video.status === "processing" && (
-              <div class="progress-container">
-                <div class="progress-bar">
-                  <div
-                    class="progress-fill"
-                    style={`width: ${video.progress}%`}
-                  ></div>
-                </div>
-                <span class="progress-text">
-                  {video.progress > 0 ? `${video.progress}%` : "Analyzing..."}
+    <div class="mb-8">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title text-lg">🔄 Processing Videos</h3>
+        </div>
+        <div class="card-content processing-status-grid">
+          {processingVideos.value.map((video) => (
+            <div key={video.videoId} class="card processing-item-layout">
+              <div class="processing-header-layout">
+                <span class="video-title-layout font-semibold text-primary">
+                  {video.title}
+                </span>
+                <span
+                  class={`badge ${
+                    video.status === "processing"
+                      ? "badge-warning"
+                      : video.status === "completed"
+                        ? "badge-success"
+                        : "badge-destructive"
+                  }`}
+                >
+                  {video.status === "processing"
+                    ? "Processing"
+                    : video.status === "completed"
+                      ? "Completed"
+                      : "Failed"}
                 </span>
               </div>
-            )}
 
-            {video.status === "completed" && (
-              <div class="completion-message">
-                ✅ Video processing completed successfully!
-              </div>
-            )}
+              {video.status === "processing" && (
+                <div class="progress-layout">
+                  <div class="progress flex-1">
+                    <div
+                      class="progress-indicator"
+                      style={`width: ${video.progress}%`}
+                    ></div>
+                  </div>
+                  <span class="progress-text-layout text-sm font-medium text-muted">
+                    {video.progress > 0 ? `${video.progress}%` : "Analyzing..."}
+                  </span>
+                </div>
+              )}
 
-            {video.status === "failed" && (
-              <div class="error-message">
-                ❌ Video processing failed. Please try again.
-              </div>
-            )}
-          </div>
-        ))}
+              {video.status === "completed" && (
+                <div class="alert alert-success">
+                  <div class="alert-description">
+                    ✅ Video processing completed successfully!
+                  </div>
+                </div>
+              )}
+
+              {video.status === "failed" && (
+                <div class="alert alert-destructive">
+                  <div class="alert-description">
+                    ❌ Video processing failed. Please try again.
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
-
-      <style>{`
-        .processing-status-container {
-          margin-bottom: 2rem;
-        }
-        
-        .processing-status-card {
-          background: #f8f9fa;
-          border: 2px solid #e9ecef;
-          border-radius: 12px;
-          padding: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .processing-status-card h3 {
-          margin: 0 0 1rem 0;
-          color: #495057;
-          font-size: 1.2rem;
-        }
-        
-        .processing-item {
-          background: white;
-          border: 1px solid #dee2e6;
-          border-radius: 8px;
-          padding: 1rem;
-          margin-bottom: 0.75rem;
-        }
-        
-        .processing-item:last-child {
-          margin-bottom: 0;
-        }
-        
-        .processing-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.75rem;
-        }
-        
-        .video-title {
-          font-weight: 600;
-          color: #212529;
-          flex: 1;
-          margin-right: 1rem;
-          word-break: break-word;
-        }
-        
-        .status-badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 20px;
-          font-size: 0.875rem;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.025rem;
-        }
-        
-        .status-processing {
-          background: #fff3cd;
-          color: #856404;
-          border: 1px solid #ffeaa7;
-        }
-        
-        .status-completed {
-          background: #d1edff;
-          color: #0c5aa6;
-          border: 1px solid #b3d9ff;
-        }
-        
-        .status-failed {
-          background: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f1aeb5;
-        }
-        
-        .progress-container {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        
-        .progress-bar {
-          flex: 1;
-          height: 8px;
-          background: #e9ecef;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-        
-        .progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #007bff, #0056b3);
-          border-radius: 4px;
-          transition: width 0.3s ease;
-        }
-        
-        .progress-text {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: #6c757d;
-          min-width: 4rem;
-          text-align: right;
-        }
-        
-        .completion-message {
-          color: #155724;
-          background: #d4edda;
-          border: 1px solid #c3e6cb;
-          border-radius: 4px;
-          padding: 0.5rem;
-          font-size: 0.875rem;
-        }
-        
-        .error-message {
-          color: #721c24;
-          background: #f8d7da;
-          border: 1px solid #f1aeb5;
-          border-radius: 4px;
-          padding: 0.5rem;
-          font-size: 0.875rem;
-        }
-      `}</style>
     </div>
   );
 });

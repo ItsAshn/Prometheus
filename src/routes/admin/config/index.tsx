@@ -86,7 +86,11 @@ export default component$(() => {
           <a href="/admin" class="back-link">
             ← Dashboard
           </a>
-          <button type="button" onClick$={handleLogout} class="logout-btn">
+          <button
+            type="button"
+            onClick$={handleLogout}
+            class="btn btn-destructive"
+          >
             Logout
           </button>
         </div>

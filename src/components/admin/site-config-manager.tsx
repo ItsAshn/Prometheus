@@ -254,7 +254,11 @@ export const SiteConfigManager = component$(() => {
         {store.error && (
           <div class="error-message">
             {store.error}
-            <button type="button" onClick$={clearMessages} class="close-btn">
+            <button
+              type="button"
+              onClick$={clearMessages}
+              class="btn btn-ghost btn-sm absolute top-2 right-3 p-1 w-6 h-6"
+            >
               ×
             </button>
           </div>
@@ -263,7 +267,11 @@ export const SiteConfigManager = component$(() => {
         {store.successMessage && (
           <div class="success-message">
             {store.successMessage}
-            <button type="button" onClick$={clearMessages} class="close-btn">
+            <button
+              type="button"
+              onClick$={clearMessages}
+              class="btn btn-ghost btn-sm absolute top-2 right-3 p-1 w-6 h-6"
+            >
               ×
             </button>
           </div>
@@ -297,7 +305,11 @@ export const SiteConfigManager = component$(() => {
           </div>
 
           <div class="form-actions">
-            <button type="submit" class="submit-btn" disabled={store.isSaving}>
+            <button
+              type="submit"
+              class="btn btn-primary btn-full btn-lg"
+              disabled={store.isSaving}
+            >
               {store.isSaving ? "Saving..." : "Save Configuration"}
             </button>
           </div>
@@ -387,7 +399,7 @@ export const SiteConfigManager = component$(() => {
           <button
             type="button"
             onClick$={handleApplyCss}
-            class="apply-css-btn"
+            class="btn btn-warning btn-lg"
             disabled={store.isSaving}
           >
             {store.isSaving ? "Applying..." : "Apply CSS"}
