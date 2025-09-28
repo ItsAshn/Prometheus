@@ -123,6 +123,7 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
     }
 
     console.log("Serving file with MIME type:", mimeType);
+    console.log("File extension detected:", path.split(".").pop());
 
     // For .m3u8 files, serve as text; for .ts and .mp4 files, serve as binary
     if (path.endsWith(".m3u8")) {
@@ -161,8 +162,9 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
             "Content-Type": mimeType,
             "Cache-Control": "no-cache",
             "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET",
-            "Access-Control-Allow-Headers": "Range",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Headers": "Range, Content-Type",
+            "Access-Control-Expose-Headers": "Content-Length, Content-Range",
           },
         })
       );

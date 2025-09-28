@@ -1,6 +1,8 @@
-import { component$, useSignal, $ } from "@builder.io/qwik";
+import { component$, useSignal, $, useStylesScoped$ } from "@builder.io/qwik";
+import styles from "./video-upload.css?inline";
 
 export const VideoUpload = component$(() => {
+  useStylesScoped$(styles);
   const title = useSignal("");
   const selectedFile = useSignal<File | null>(null);
   const isUploading = useSignal(false);
@@ -305,55 +307,87 @@ export const VideoUpload = component$(() => {
   return (
     <div class="video-upload-container">
       <div class="video-upload-card">
-        <h3>📹 Upload Video</h3>
+        <h3>
+          <span class="upload-icon">📹</span>
+          Upload Video
+        </h3>
         <p class="upload-description">
-          Upload videos to convert them to HLS format for streaming
+          Upload videos to convert them to HLS format for streaming. Supported
+          formats include MP4, AVI, MOV, MKV, and WebM.
         </p>
 
-        <form preventdefault:submit onSubmit$={handleUpload}>
+        <form
+          preventdefault:submit
+          onSubmit$={handleUpload}
+          class="upload-form"
+        >
           <div class="form-group">
-            <label for="video-title">Video Title</label>
+            <label for="video-title">
+              <span class="label-icon">🏷️</span>
+              Video Title
+            </label>
             <input
               id="video-title"
               type="text"
               bind:value={title}
-              placeholder="Enter video title"
+              placeholder="Enter a descriptive title for your video"
               required
               disabled={isUploading.value}
               class="form-input"
+              maxLength={100}
             />
           </div>
 
           <div class="form-group">
-            <label for="video-file">Video File</label>
+            <label for="video-file">
+              <span class="label-icon">📁</span>
+              Video File
+            </label>
             <input
               id="video-file"
               type="file"
-              accept="video/*"
+              accept="video/mp4,video/avi,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.avi,.mov,.mkv,.webm"
               onChange$={handleFileSelect}
               disabled={isUploading.value}
               class="form-input file-input"
             />
             <small class="file-info">
-              Supported formats: MP4, AVI, MOV, MKV, WebM (Max: 5GB)
+              📊 Supported formats: MP4, AVI, MOV, MKV, WebM • Maximum size: 5GB
             </small>
           </div>
 
           {message.value && (
             <div class={`upload-message ${messageType.value}`}>
-              <p>{message.value}</p>
+              <div class="message-content">
+                <span class="message-icon">
+                  {messageType.value === "success" && "✅"}
+                  {messageType.value === "error" && "❌"}
+                  {messageType.value === "info" && "ℹ️"}
+                </span>
+                <p>{message.value}</p>
+              </div>
             </div>
           )}
 
           {isUploading.value && (
             <div class="upload-progress">
+              <div class="progress-header">
+                <span class="progress-label">Upload Progress</span>
+                <span class="progress-percentage">
+                  {Math.round(uploadProgress.value)}%
+                </span>
+              </div>
               <div class="progress-bar">
                 <div
                   class="progress-fill"
                   style={`width: ${uploadProgress.value}%`}
                 ></div>
               </div>
-              <p>Processing upload...</p>
+              <p class="progress-status">
+                {uploadProgress.value < 90
+                  ? "⬆️ Uploading chunks..."
+                  : "🔄 Assembling and processing..."}
+              </p>
             </div>
           )}
 
@@ -364,6 +398,7 @@ export const VideoUpload = component$(() => {
             }
             class="btn btn-primary btn-lg"
           >
+            <span class="btn-icon">{isUploading.value ? "⏳" : "🚀"}</span>
             {isUploading.value ? "Uploading..." : "Upload Video"}
           </button>
         </form>

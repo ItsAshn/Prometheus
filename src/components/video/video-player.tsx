@@ -1,4 +1,10 @@
-import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
+import {
+  component$,
+  useSignal,
+  useStylesScoped$,
+  useVisibleTask$,
+} from "@builder.io/qwik";
+import styles from "./video-player.css?inline";
 
 interface VideoPlayerProps {
   hlsUrl: string;
@@ -7,6 +13,7 @@ interface VideoPlayerProps {
 }
 
 export const VideoPlayer = component$<VideoPlayerProps>((props) => {
+  useStylesScoped$(styles);
   const videoRef = useSignal<HTMLVideoElement>();
   const isLoading = useSignal(true);
   const error = useSignal("");
@@ -23,6 +30,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
         // Convert the hlsUrl to use our streaming API
         const streamingUrl = `/api/video/stream${props.hlsUrl}`;
         console.log("Loading HLS from:", streamingUrl);
+        console.log("Original hlsUrl prop:", props.hlsUrl);
 
         // Check if HLS is natively supported
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -42,6 +50,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
         // For browsers that don't support HLS natively, we'll use hls.js
         // First check if hls.js is loaded
         if (typeof (window as any).Hls !== "undefined") {
+          console.log("HLS.js is available");
           const Hls = (window as any).Hls;
 
           if (Hls.isSupported()) {
@@ -216,8 +225,20 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
             isLoading.value = false;
           }
         } else {
+          console.error(
+            "HLS.js is not available. Make sure it's loaded from CDN."
+          );
           // Fallback: try to load the video directly
+          console.log("Trying direct video loading as fallback");
           video.src = streamingUrl;
+          video.addEventListener("loadedmetadata", () => {
+            isLoading.value = false;
+          });
+          video.addEventListener("error", (e) => {
+            console.error("Direct video loading failed:", e);
+            error.value = `Video loading failed. HLS.js not available and direct loading failed: ${video.error?.message || "Unknown"}`;
+            isLoading.value = false;
+          });
           isLoading.value = false;
         }
       } catch (err) {
@@ -232,20 +253,33 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
 
   if (error.value) {
     return (
-      <div class="video-player-error">
-        <div class="error-icon">⚠️</div>
-        <p>{error.value}</p>
-        <p class="error-details">Video: {props.title}</p>
-      </div>
+      <article class="video-player-container" role="alert" aria-live="polite">
+        <div class="video-player-error">
+          <div class="error-icon" aria-hidden="true">
+            ⚠️
+          </div>
+          <p class="error-message">{error.value}</p>
+          <p class="error-details">Video: {props.title}</p>
+        </div>
+      </article>
     );
   }
 
   return (
-    <div class="video-player-container">
-      <div class="video-player">
+    <article class="video-player-container">
+      <div
+        class="video-player"
+        role="region"
+        aria-label={`Video player for ${props.title}`}
+      >
         {isLoading.value && (
-          <div class="video-loading">
-            <div class="loading-spinner"></div>
+          <div
+            class="video-loading"
+            role="status"
+            aria-live="polite"
+            aria-label="Loading video content"
+          >
+            <div class="loading-spinner" aria-hidden="true"></div>
             <p>Loading video...</p>
           </div>
         )}
@@ -254,20 +288,25 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
           controls
           class={`video-element ${isLoading.value ? "loading" : ""}`}
           preload="metadata"
+          aria-label={props.title}
+          aria-describedby="video-title"
           style={{
             width: "100%",
             height: "auto",
             display: isLoading.value ? "none" : "block",
           }}
         >
-          <p>Your browser does not support video playback.</p>
+          <p>
+            Your browser does not support video playback. Please try a different
+            browser or update your current one.
+          </p>
         </video>
       </div>
       {!isLoading.value && (
-        <div class="video-title">
-          <h3>{props.title}</h3>
-        </div>
+        <header class="video-title">
+          <h3 id="video-title">{props.title}</h3>
+        </header>
       )}
-    </div>
+    </article>
   );
 });

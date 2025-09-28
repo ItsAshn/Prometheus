@@ -1,12 +1,20 @@
-import { component$, useSignal, useVisibleTask$, $ } from "@builder.io/qwik";
+import {
+  component$,
+  useSignal,
+  useVisibleTask$,
+  $,
+  useStylesScoped$,
+} from "@builder.io/qwik";
 import { VideoPlayer } from "./video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
+import styles from "./video-list.css?inline";
 
 interface VideoListProps {
   isAdmin?: boolean;
 }
 
 export const VideoList = component$<VideoListProps>((props) => {
+  useStylesScoped$(styles);
   const videos = useSignal<VideoMetadata[]>([]);
   const isLoading = useSignal(true);
   const error = useSignal("");
