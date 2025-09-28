@@ -4,9 +4,11 @@ import {
   useTask$,
   useVisibleTask$,
   $,
+  useStylesScoped$,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
+import styles from "./index.css?inline";
 
 interface SiteConfig {
   channelName: string;
@@ -15,6 +17,7 @@ interface SiteConfig {
 }
 
 export default component$(() => {
+  useStylesScoped$(styles);
   const authStore = useStore({
     isAuthenticated: false,
     isLoading: true,
@@ -264,29 +267,6 @@ export default component$(() => {
           </div>
         </section>
       </main>
-
-      <footer class="site-footer">
-        <div class="footer-content">
-          <div class="footer-brand">
-            <h4>{channelName}</h4>
-            <p>Self-hosted video platform</p>
-          </div>
-          <div class="footer-links">
-            <a href="/videos">Video Library</a>
-            <a
-              href="https://github.com/ItsAshn/Prometheus"
-              target="_blank"
-              rel="noopener"
-            >
-              Open Source
-            </a>
-            {authStore.isAuthenticated && <a href="/admin">Admin Panel</a>}
-          </div>
-        </div>
-        <div class="footer-bottom">
-          <p>&copy; 2025 {channelName}</p>
-        </div>
-      </footer>
     </div>
   );
 });

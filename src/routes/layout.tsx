@@ -1,5 +1,6 @@
-import { component$, useStore, useTask$, $ } from "@builder.io/qwik";
+import { $, component$, Slot, useStore, useTask$ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import { Footer } from "~/components/footer/footer";
 import { Sidebar } from "~/components/sidebar/sidebar";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import {
@@ -13,7 +14,7 @@ interface SiteConfig {
   lastUpdated: string;
 }
 
-export const GlobalLayout = component$(() => {
+export default component$(() => {
   const authStore = useStore({
     isAuthenticated: false,
     isLoading: true,
@@ -77,10 +78,8 @@ export const GlobalLayout = component$(() => {
 
   // Use site config for display, with fallbacks
   const channelName = siteStore.config?.channelName || "Your Video Channel";
-
   return (
-    <>
-      <ThemeToggle />
+    <div>
       <Sidebar
         channelName={channelName}
         isAuthenticated={authStore.isAuthenticated}
@@ -88,6 +87,9 @@ export const GlobalLayout = component$(() => {
         isLoading={authStore.isLoading}
         onLogout={handleLogout}
       />
-    </>
+      <ThemeToggle />
+      <Slot />
+      <Footer />
+    </div>
   );
 });

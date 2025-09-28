@@ -1,8 +1,10 @@
-import { component$ } from "@builder.io/qwik";
+import { component$, useStylesScoped$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { VideoList } from "~/components/video/video-list";
+import styles from "./index.css?inline";
 
 export default component$(() => {
+  useStylesScoped$(styles);
   return (
     <div class="public-videos-page">
       <div class="site-container">
@@ -17,20 +19,6 @@ export default component$(() => {
 
           <VideoList isAdmin={false} />
         </main>
-
-        <footer class="videos-footer">
-          <div class="footer-content">
-            <p>Self-Hosted Video Platform</p>
-            <div class="footer-links">
-              <a href="/" class="footer-link">
-                ← Back to Home
-              </a>
-              <a href="/admin" class="footer-link">
-                Admin Panel
-              </a>
-            </div>
-          </div>
-        </footer>
       </div>
     </div>
   );

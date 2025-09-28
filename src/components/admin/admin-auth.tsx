@@ -1,10 +1,17 @@
-import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
-import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
+import {
+  component$,
+  useSignal,
+  useStore,
+  useTask$,
+  $,
+  useStylesScoped$,
+} from "@builder.io/qwik";
 import {
   checkAdminAuthServer,
   loginAdminServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
+import styles from "./admin-auth.css?inline";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -16,6 +23,7 @@ interface AdminAuthStore {
 }
 
 export const AdminAuth = component$(() => {
+  useStylesScoped$(styles);
   const authStore = useStore<AdminAuthStore>({
     isAuthenticated: false,
     isLoading: true,
@@ -107,7 +115,6 @@ export const AdminAuth = component$(() => {
   if (authStore.isLoading) {
     return (
       <div class="admin-container">
-        <ThemeToggle />
         <div class="admin-card">
           <div class="loading-spinner"></div>
           <h2>Loading...</h2>
@@ -119,7 +126,6 @@ export const AdminAuth = component$(() => {
   if (authStore.isAuthenticated && authStore.user) {
     return (
       <div class="admin-container">
-        <ThemeToggle />
         <div class="admin-dashboard">
           <header class="admin-header">
             <h1>Admin Dashboard</h1>
@@ -216,7 +222,6 @@ export const AdminAuth = component$(() => {
 
   return (
     <div class="admin-container">
-      <ThemeToggle />
       <div class="admin-card">
         <header class="admin-login-header">
           <h2>🔐 Admin Login</h2>
