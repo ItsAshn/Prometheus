@@ -4,7 +4,9 @@ import {
   $,
   type QwikMouseEvent,
   type QRL,
+  useStylesScoped$,
 } from "@builder.io/qwik";
+import styles from "./sidebar.css?inline";
 
 interface SidebarProps {
   channelName: string;
@@ -31,6 +33,8 @@ export const Sidebar = component$<SidebarProps>(
         closeSidebar();
       }
     });
+
+    useStylesScoped$(styles);
 
     return (
       <>
