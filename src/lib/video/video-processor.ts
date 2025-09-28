@@ -16,8 +16,6 @@ async function setupFFmpegPath() {
     ffmpegPath, // From ffmpeg-static package as fallback
   ];
 
-  console.log("FFmpeg static path:", ffmpegPath);
-
   for (const pathToTry of possiblePaths) {
     if (!pathToTry) continue;
     
@@ -25,12 +23,10 @@ async function setupFFmpegPath() {
       // Test if ffmpeg is executable at this path
       const { stdout } = await execAsync(`"${pathToTry}" -version`);
       if (stdout.includes("ffmpeg version")) {
-        console.log(`FFmpeg found at: ${pathToTry}`);
         ffmpeg.setFfmpegPath(pathToTry);
         return pathToTry;
       }
     } catch (error) {
-      console.log(`FFmpeg not found at: ${pathToTry}`);
       continue;
     }
   }
@@ -39,7 +35,6 @@ async function setupFFmpegPath() {
   if (ffmpegPath) {
     try {
       await execAsync(`chmod +x "${ffmpegPath}"`);
-      console.log(`Made FFmpeg executable: ${ffmpegPath}`);
       ffmpeg.setFfmpegPath(ffmpegPath);
       return ffmpegPath;
     } catch (error) {
@@ -54,7 +49,6 @@ async function setupFFmpegPath() {
 let ffmpegReady = false;
 setupFFmpegPath()
   .then((path) => {
-    console.log(`FFmpeg setup successful: ${path}`);
     ffmpegReady = true;
   })
   .catch((error) => {

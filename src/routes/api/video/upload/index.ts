@@ -28,24 +28,12 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       return;
     }
 
-    console.log("Authentication successful");
-
-    // Debug: Log request details
-    console.log("Request method:", request.method);
-    console.log(
-      "Request headers:",
-      Object.fromEntries(request.headers.entries())
-    );
-    console.log("Request content-type:", request.headers.get("content-type"));
-
     // Check content-length before parsing
     const contentLength = request.headers.get("content-length");
-    console.log("Content-Length:", contentLength);
 
     if (contentLength) {
       const sizeInBytes = parseInt(contentLength);
       const sizeInGB = sizeInBytes / (1024 * 1024 * 1024);
-      console.log(`Upload size: ${sizeInGB.toFixed(2)} GB`);
 
       // Check if size exceeds our limit before parsing
       const maxSize = 2 * 1024 * 1024 * 1024; // 2GB limit
@@ -62,9 +50,7 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     // Parse the multipart form data using Web API
     let formData;
     try {
-      console.log("Attempting to parse FormData...");
       formData = await request.formData();
-      console.log("FormData parsed successfully");
     } catch (error) {
       console.error("FormData parsing error:", error);
 
@@ -150,18 +136,15 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     // Generate unique video ID
     const videoId = `video_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    console.log(`Starting video processing for: ${title} (ID: ${videoId})`);
-
     // Process video to HLS (this runs in background)
     VideoProcessor.processVideoToHLS(tempFilePath, videoId, title)
       .then(() => {
-        console.log(`Video processing completed for: ${title}`);
         // Note: VideoProcessor handles cleanup of the input file
       })
       .catch((error) => {
         console.error(`Video processing failed for: ${title}`, error);
         // Clean up temp file only on error
-        fs.unlink(tempFilePath).catch(console.error);
+        fs.unlink(tempFilePath).catch(() => {});
       });
 
     json(200, {

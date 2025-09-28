@@ -9,11 +9,6 @@ export const checkAdminAuthServer = server$(async function () {
     const { AdminAuthService, ADMIN_COOKIE_NAME } = await import("~/lib/auth");
 
     const token = this.cookie.get(ADMIN_COOKIE_NAME)?.value;
-    console.log("Auth check - Cookie check:", {
-      cookieName: ADMIN_COOKIE_NAME,
-      hasToken: !!token,
-      tokenPreview: token ? token.substring(0, 20) + "..." : "none",
-    });
 
     if (!token) {
       return {
@@ -23,7 +18,6 @@ export const checkAdminAuthServer = server$(async function () {
     }
 
     const payload = AdminAuthService.verifyToken(token);
-    console.log("Auth check - Token payload:", payload);
 
     if (!payload || !payload.isAdmin) {
       // Invalid token, clear the cookie
@@ -54,17 +48,11 @@ export const loginAdminServer = server$(async function (
   username: string,
   password: string
 ) {
-  console.log("Login server function called with:", {
-    username,
-    passwordLength: password?.length,
-  });
-
   try {
     // Import the auth service directly instead of making HTTP requests
     const { AdminAuthService, ADMIN_COOKIE_NAME, COOKIE_OPTIONS } = await import("~/lib/auth");
 
     if (!username || !password) {
-      console.log("Missing credentials");
       return {
         success: false,
         data: { message: "Username and password are required" }
@@ -76,10 +64,8 @@ export const loginAdminServer = server$(async function (
       username.trim(),
       password
     );
-    console.log("Credential verification result:", isValid);
 
     if (!isValid) {
-      console.log("Invalid credentials");
       return {
         success: false,
         data: { message: "Invalid admin credentials" }
@@ -92,15 +78,8 @@ export const loginAdminServer = server$(async function (
       isAdmin: true,
     });
 
-    console.log("Login - Setting cookie:", {
-      cookieName: ADMIN_COOKIE_NAME,
-      tokenPreview: token.substring(0, 20) + "...",
-      cookieOptions: COOKIE_OPTIONS,
-    });
-
     // Set secure HTTP-only cookie directly
     this.cookie.set(ADMIN_COOKIE_NAME, token, COOKIE_OPTIONS);
-    console.log("Cookie set successfully");
 
     return {
       success: true,

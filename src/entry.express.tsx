@@ -93,5 +93,5 @@ app.use(notFound);
 
 // Start the express server
 app.listen(PORT, () => {
-  console.log(`Server started: http://localhost:${PORT}/`);
+  // Server started on port ${PORT}
 });

@@ -34,14 +34,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
-    console.log("Chunk upload - Cookie check:", {
-      cookieName: ADMIN_COOKIE_NAME,
-      hasToken: !!adminToken,
-      tokenPreview: adminToken
-        ? adminToken.value.substring(0, 20) + "..."
-        : "none",
-      allCookies: Object.keys(cookie.getAll()),
-    });
 
     if (!adminToken) {
       const errorData = {
@@ -66,12 +58,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     // Verify admin authentication
     const tokenPayload = AdminAuthService.verifyToken(adminToken.value);
-    console.log("Chunk upload - Token verification:", {
-      isValid: !!tokenPayload,
-      payload: tokenPayload
-        ? { username: tokenPayload.username, isAdmin: tokenPayload.isAdmin }
-        : null,
-    });
 
     if (!tokenPayload) {
       const errorData = {
@@ -134,7 +120,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
     try {
       await fs.mkdir(tempDir, { recursive: true });
-      console.log(`Created/ensured temp directory: ${tempDir}`);
     } catch (error) {
       console.error(`Failed to create temp directory: ${tempDir}`, error);
       throw new Error(`Failed to create temp directory: ${error}`);
@@ -150,10 +135,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       const arrayBuffer = await chunk.arrayBuffer();
       const chunkData = new Uint8Array(arrayBuffer);
       await fs.writeFile(chunkPath, chunkData);
-
-      console.log(
-        `Chunk ${chunkIndex + 1}/${totalChunks} uploaded for ${fileName}: ${chunkData.length} bytes -> ${chunkPath}`
-      );
     } catch (error) {
       console.error(
         `Failed to save chunk ${chunkIndex + 1}/${totalChunks}:`,

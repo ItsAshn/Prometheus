@@ -26,10 +26,6 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
   const path = params.path;
   const rangeHeader = request.headers.get("range");
 
-  console.log(
-    `[${new Date().toISOString()}] Video stream request: ${path}${rangeHeader ? ` (Range: ${rangeHeader})` : ""}`
-  );
-
   if (!path) {
     console.log("Error: No path parameter provided");
     send(
@@ -58,7 +54,6 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
   try {
     // Build the full path to the video file
     // The path already includes "videos/hls/..." so just join with public
-    console.log("Received path parameter:", path);
 
     // Remove any leading "videos/" if it exists to prevent duplication
     let cleanPath = path;
@@ -69,7 +64,6 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
     }
 
     const fullPath = join(process.cwd(), "public", cleanPath);
-    console.log("Full path constructed:", fullPath);
 
     // Check if file exists and get size
     if (!existsSync(fullPath)) {
@@ -85,12 +79,9 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
 
     let fileContent: Buffer;
     try {
-      const readStartTime = Date.now();
       fileContent = await readFile(fullPath);
-      const readTime = Date.now() - readStartTime;
       const fileSizeMB =
         Math.round((fileContent.length / 1024 / 1024) * 100) / 100;
-      console.log(`File read successfully: ${fileSizeMB}MB in ${readTime}ms`);
 
       // Check for unusually large files that might cause issues
       if (fileContent.length > 50 * 1024 * 1024) {
@@ -121,9 +112,6 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
     } else {
       mimeType = "application/octet-stream";
     }
-
-    console.log("Serving file with MIME type:", mimeType);
-    console.log("File extension detected:", path.split(".").pop());
 
     // For .m3u8 files, serve as text; for .ts and .mp4 files, serve as binary
     if (path.endsWith(".m3u8")) {
@@ -170,7 +158,6 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
       );
     } else {
       // For .ts and .mp4 files, serve as binary with proper headers
-      console.log("Serving media file, size:", fileContent.length, "bytes");
 
       const fileSize = fileContent.length;
       const fileSizeMB = Math.round((fileSize / 1024 / 1024) * 100) / 100;

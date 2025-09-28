@@ -20,7 +20,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       `c:/Users/phoen/Documents/Prometheus/qwik-app/public/videos/${videoId}.mp4`,
       videoId,
       "Treasure Planet"
-    ).catch(console.error);
+    ).catch(() => {});
 
     json(200, {
       success: true,

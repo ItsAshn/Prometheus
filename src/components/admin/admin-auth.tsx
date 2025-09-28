@@ -51,10 +51,6 @@ export const AdminAuth = component$(() => {
   });
 
   const handleLogin = $(async () => {
-    console.log("handleLogin called with:", {
-      username: username.value,
-      password: "***",
-    });
     error.value = "";
 
     if (!username.value.trim() || !password.value) {
@@ -63,23 +59,19 @@ export const AdminAuth = component$(() => {
     }
 
     isSubmitting.value = true;
-    console.log("About to call loginAdmin server function");
 
     try {
       const result = await loginAdminServer(
         username.value.trim(),
         password.value
       );
-      console.log("loginAdmin result:", result);
 
       if (result.success) {
-        console.log("Login successful, redirecting to /");
         authStore.isAuthenticated = true;
         authStore.user = result.data.user || null;
         // Redirect to main page after successful login
         window.location.href = "/";
       } else {
-        console.log("Login failed:", result.data.message);
         error.value = result.data.message || "Login failed";
       }
     } catch (err) {

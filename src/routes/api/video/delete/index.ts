@@ -7,19 +7,15 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     // Verify admin authentication
     const authCookie = cookie.get(ADMIN_COOKIE_NAME);
     if (!authCookie?.value) {
-      console.log("Video delete: No auth cookie found");
       json(401, { success: false, message: "Authentication required" });
       return;
     }
 
     const isValidToken = AdminAuthService.verifyToken(authCookie.value);
     if (!isValidToken) {
-      console.log("Video delete: Invalid or expired token");
       json(401, { success: false, message: "Invalid or expired token" });
       return;
     }
-
-    console.log("Video delete: Authentication successful");
 
     const { videoId } = await request.json();
 

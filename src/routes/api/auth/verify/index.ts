@@ -4,11 +4,6 @@ import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 export const onGet: RequestHandler = async ({ cookie, json }) => {
   try {
     const token = cookie.get(ADMIN_COOKIE_NAME)?.value;
-    console.log("Verify endpoint - Cookie check:", {
-      cookieName: ADMIN_COOKIE_NAME,
-      hasToken: !!token,
-      tokenPreview: token ? token.substring(0, 20) + "..." : "none",
-    });
 
     if (!token) {
       json(401, {
@@ -19,7 +14,6 @@ export const onGet: RequestHandler = async ({ cookie, json }) => {
     }
 
     const payload = AdminAuthService.verifyToken(token);
-    console.log("Verify endpoint - Token payload:", payload);
 
     if (!payload || !payload.isAdmin) {
       // Invalid token, clear the cookie

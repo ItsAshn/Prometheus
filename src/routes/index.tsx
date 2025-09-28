@@ -98,7 +98,6 @@ export default component$(() => {
       loadSiteConfig(),
     ]);
 
-    console.log("Auth status check:", authStatus); // Debug log
     authStore.isAuthenticated = authStatus.isAuthenticated;
     authStore.username = authStatus.username;
     authStore.isLoading = false;
@@ -114,7 +113,6 @@ export default component$(() => {
   useVisibleTask$(() => {
     const recheckAuth = async () => {
       const status = await checkAdminAuth();
-      console.log("Visible task auth check:", status); // Debug log
       authStore.isAuthenticated = status.isAuthenticated;
       authStore.username = status.username;
       authStore.isLoading = false;

@@ -29,12 +29,9 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
       try {
         // Convert the hlsUrl to use our streaming API
         const streamingUrl = `/api/video/stream${props.hlsUrl}`;
-        console.log("Loading HLS from:", streamingUrl);
-        console.log("Original hlsUrl prop:", props.hlsUrl);
 
         // Check if HLS is natively supported
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          console.log("Using native HLS support");
           video.src = streamingUrl;
           video.addEventListener("loadedmetadata", () => {
             isLoading.value = false;
@@ -50,7 +47,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
         // For browsers that don't support HLS natively, we'll use hls.js
         // First check if hls.js is loaded
         if (typeof (window as any).Hls !== "undefined") {
-          console.log("HLS.js is available");
           const Hls = (window as any).Hls;
 
           if (Hls.isSupported()) {
@@ -125,15 +121,10 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
 
               // Handle timeout errors specifically - these are common with large segments
               if (data.details === "fragLoadTimeOut") {
-                console.log("Fragment load timeout detected for large segment");
                 if (!data.fatal) {
-                  console.log(
-                    "Non-fatal timeout, player will retry automatically"
-                  );
                   return;
                 }
                 // For fatal timeouts, try to recover
-                console.log("Fatal timeout, attempting recovery...");
                 hls.startLoad();
                 return;
               }
@@ -143,17 +134,12 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 data.details === "fragLoadError" ||
                 data.details === "manifestLoadError"
               ) {
-                console.log(`${data.details} detected, likely network related`);
                 if (!data.fatal) {
-                  console.log("Non-fatal load error, player will retry");
                   return;
                 }
 
                 if (networkRetryCount < maxNetworkRetries) {
                   networkRetryCount++;
-                  console.log(
-                    `Fatal network error, retry attempt ${networkRetryCount}/${maxNetworkRetries}`
-                  );
                   setTimeout(() => {
                     hls.startLoad();
                   }, 2000 * networkRetryCount); // Exponential backoff
@@ -167,9 +153,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 data.details === "bufferNudgeOnStall" ||
                 data.details === "bufferStalledError"
               ) {
-                console.log(
-                  `Buffer handling: ${data.details} - attempting automatic recovery`
-                );
                 return; // Let HLS.js handle these automatically
               }
 
@@ -178,7 +161,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 data.details === "levelLoadTimeOut" ||
                 data.details === "levelLoadError"
               ) {
-                console.log("Level loading issue, attempting recovery...");
                 if (data.fatal) {
                   hls.startLoad();
                 }
@@ -189,9 +171,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               if (data.fatal) {
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.log(
-                      "Fatal network error after retries, final recovery attempt..."
-                    );
                     setTimeout(() => {
                       try {
                         hls.startLoad();
@@ -203,7 +182,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                     }, 5000);
                     break;
                   case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log("Fatal media error, attempting to recover...");
                     try {
                       hls.recoverMediaError();
                     } catch (e) {
@@ -213,7 +191,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                     }
                     break;
                   default:
-                    console.log("Unrecoverable error:", data);
                     error.value = `Failed to load video stream: ${data.details || "Unknown error"}`;
                     isLoading.value = false;
                     break;
@@ -229,7 +206,6 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
             "HLS.js is not available. Make sure it's loaded from CDN."
           );
           // Fallback: try to load the video directly
-          console.log("Trying direct video loading as fallback");
           video.src = streamingUrl;
           video.addEventListener("loadedmetadata", () => {
             isLoading.value = false;

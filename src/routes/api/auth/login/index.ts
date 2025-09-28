@@ -6,17 +6,10 @@ import {
 } from "~/lib/auth";
 
 export const onPost: RequestHandler = async ({ request, json, cookie }) => {
-  console.log("Login endpoint called!"); // Debug: Entry point
-
   try {
     const { username, password } = await request.json();
-    console.log("Login attempt:", {
-      username,
-      passwordLength: password?.length,
-    }); // Debug: Request data
 
     if (!username || !password) {
-      console.log("Missing credentials"); // Debug
       json(400, {
         success: false,
         message: "Username and password are required",
@@ -29,10 +22,8 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       username.trim(),
       password
     );
-    console.log("Credential verification result:", isValid); // Debug
 
     if (!isValid) {
-      console.log("Invalid credentials"); // Debug
       json(401, {
         success: false,
         message: "Invalid admin credentials",
@@ -46,15 +37,8 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       isAdmin: true,
     });
 
-    console.log("Login endpoint - Setting cookie:", {
-      cookieName: ADMIN_COOKIE_NAME,
-      tokenPreview: token.substring(0, 20) + "...",
-      cookieOptions: COOKIE_OPTIONS,
-    });
-
     // Set secure HTTP-only cookie
     cookie.set(ADMIN_COOKIE_NAME, token, COOKIE_OPTIONS);
-    console.log("Cookie set successfully"); // Debug
 
     json(200, {
       success: true,

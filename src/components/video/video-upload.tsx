@@ -97,10 +97,6 @@ export const VideoUpload = component$(() => {
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
       const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      console.log(
-        `Starting chunked upload: ${totalChunks} chunks of ${CHUNK_SIZE / 1024 / 1024}MB each`
-      );
-
       // Upload chunks with retry mechanism
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
         const start = chunkIndex * CHUNK_SIZE;
@@ -170,9 +166,8 @@ export const VideoUpload = component$(() => {
               return;
             }
 
-            let result;
             try {
-              result = await response.json();
+              await response.json();
             } catch (jsonError) {
               if (retries > 1) {
                 console.warn(
@@ -193,10 +188,6 @@ export const VideoUpload = component$(() => {
               return;
             }
 
-            console.log(
-              `Chunk ${chunkIndex + 1}/${totalChunks} uploaded:`,
-              result
-            );
             break; // Success, exit retry loop
           } catch (error) {
             if (retries > 1) {
@@ -271,8 +262,6 @@ export const VideoUpload = component$(() => {
         messageType.value = "error";
         return;
       }
-
-      console.log("Assembly result:", assembleResult);
 
       if (assembleResult.success) {
         uploadProgress.value = 100;

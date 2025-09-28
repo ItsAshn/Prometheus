@@ -23,16 +23,6 @@ export const onOptions: RequestHandler = async ({ send, request }) => {
 
 export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
-    console.log("Assemble endpoint called - Request details:", {
-      method: request.method,
-      url: request.url,
-      headers: Object.fromEntries(request.headers.entries()),
-      hasBody: !!request.body,
-      bodyUsed: request.bodyUsed,
-      contentType: request.headers.get("content-type"),
-      contentLength: request.headers.get("content-length"),
-    });
-
     // Parse request body - handle both JSON and FormData
     let requestData: any = {};
     const contentType = request.headers.get("content-type") || "";
@@ -41,7 +31,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
       if (contentType.includes("application/json")) {
         // Handle JSON body
         requestData = await request.json();
-        console.log("Parsed JSON request data:", requestData);
       } else if (contentType.includes("multipart/form-data")) {
         // Handle FormData body
         const formData = await request.formData();
@@ -51,7 +40,6 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           totalChunks: parseInt(formData.get("totalChunks") as string),
           title: formData.get("title") as string,
         };
-        console.log("Parsed FormData request data:", requestData);
       } else {
         throw new Error(`Unsupported content type: ${contentType}`);
       }
