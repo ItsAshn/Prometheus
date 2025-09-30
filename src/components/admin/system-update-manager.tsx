@@ -49,15 +49,34 @@ export const SystemUpdateManager = component$(() => {
       );
 
       if (response.ok) {
-        const result = await response.json();
-        return { success: true, data: result.data };
+        try {
+          const result = await response.json();
+          return { success: true, data: result.data };
+        } catch (jsonError) {
+          console.error(
+            "Error parsing system status response JSON:",
+            jsonError
+          );
+          return {
+            success: false,
+            error: "Server returned invalid response format",
+          };
+        }
       }
 
-      const error = await response.json();
-      return {
-        success: false,
-        error: error.message || "Failed to get system status",
-      };
+      try {
+        const error = await response.json();
+        return {
+          success: false,
+          error: error.message || error.error || "Failed to get system status",
+        };
+      } catch (jsonError) {
+        console.error("Error parsing error response JSON:", jsonError);
+        return {
+          success: false,
+          error: `Server error (${response.status}): ${response.statusText}`,
+        };
+      }
     } catch (error) {
       console.error("Error getting system status:", error);
       return { success: false, error: "Network error" };
@@ -82,15 +101,32 @@ export const SystemUpdateManager = component$(() => {
       );
 
       if (response.ok) {
-        const result = await response.json();
-        return { success: true, data: result };
+        try {
+          const result = await response.json();
+          return { success: true, data: result };
+        } catch (jsonError) {
+          console.error("Error parsing success response JSON:", jsonError);
+          return {
+            success: false,
+            error: "Server returned invalid response format",
+          };
+        }
       }
 
-      const error = await response.json();
-      return {
-        success: false,
-        error: error.error || "Failed to perform system update",
-      };
+      try {
+        const error = await response.json();
+        return {
+          success: false,
+          error:
+            error.error || error.message || "Failed to perform system update",
+        };
+      } catch (jsonError) {
+        console.error("Error parsing error response JSON:", jsonError);
+        return {
+          success: false,
+          error: `Server error (${response.status}): ${response.statusText}`,
+        };
+      }
     } catch (error) {
       console.error("Error performing system update:", error);
       return { success: false, error: "Network error" };

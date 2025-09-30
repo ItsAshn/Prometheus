@@ -1,6 +1,6 @@
 import { component$, useStore, useVisibleTask$ } from "@builder.io/qwik";
 import { Auth } from "../auth/auth";
-import { Dashboard } from "../dashboard/dashboard";
+import { VideoList } from "../video/video-list";
 
 interface AppState {
   isAuthenticated: boolean;
@@ -59,6 +59,8 @@ export const App = component$(() => {
   }
 
   return (
-    <div class="app">{appState.isAuthenticated ? <Dashboard /> : <Auth />}</div>
+    <div class="app">
+      {appState.isAuthenticated ? <VideoList isAdmin={true} /> : <Auth />}
+    </div>
   );
 });

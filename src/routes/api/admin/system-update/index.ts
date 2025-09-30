@@ -69,28 +69,66 @@ async function getGitStatus(): Promise<{
   lastCommit: string;
 }> {
   try {
+    // Check if we're in a git repository first
+    try {
+      await executeCommand("git rev-parse --git-dir");
+    } catch {
+      // Not a git repository, return default values
+      return {
+        currentBranch: "unknown",
+        hasChanges: false,
+        remoteUrl: "not-available",
+        lastCommit: "No Git repository found",
+      };
+    }
+
     const [branchResult, statusResult, remoteResult, commitResult] =
       await Promise.all([
-        executeCommand("git branch --show-current"),
-        executeCommand("git status --porcelain"),
-        executeCommand("git remote get-url origin"),
-        executeCommand("git log -1 --format='%H %s'"),
+        executeCommand("git branch --show-current").catch(() => ({
+          stdout: "unknown",
+          stderr: "",
+        })),
+        executeCommand("git status --porcelain").catch(() => ({
+          stdout: "",
+          stderr: "",
+        })),
+        executeCommand("git remote get-url origin").catch(() => ({
+          stdout: "not-available",
+          stderr: "",
+        })),
+        executeCommand("git log -1 --format='%H %s'").catch(() => ({
+          stdout: "No commits found",
+          stderr: "",
+        })),
       ]);
 
     return {
-      currentBranch: branchResult.stdout.trim(),
+      currentBranch: branchResult.stdout.trim() || "unknown",
       hasChanges: statusResult.stdout.trim().length > 0,
-      remoteUrl: remoteResult.stdout.trim(),
-      lastCommit: commitResult.stdout.trim(),
+      remoteUrl: remoteResult.stdout.trim() || "not-available",
+      lastCommit: commitResult.stdout.trim() || "No commits found",
     };
   } catch (error: any) {
-    throw new Error(`Failed to get Git status: ${error.message}`);
+    // Return safe defaults instead of throwing
+    return {
+      currentBranch: "error",
+      hasChanges: false,
+      remoteUrl: "error",
+      lastCommit: `Error: ${error.message}`,
+    };
   }
 }
 
 // Helper function to pull latest changes
 async function pullLatestChanges(): Promise<string> {
   try {
+    // Check if we're in a git repository first
+    try {
+      await executeCommand("git rev-parse --git-dir");
+    } catch {
+      return "Error: Not a Git repository. Updates cannot be pulled without Git.";
+    }
+
     // First, fetch the latest changes
     await executeCommand("git fetch origin");
 
@@ -111,7 +149,7 @@ async function pullLatestChanges(): Promise<string> {
 
     return `Successfully pulled ${commitsBehind} new commit(s):\n${pullOutput}`;
   } catch (error: any) {
-    throw new Error(`Failed to pull changes: ${error.message}`);
+    return `Failed to pull changes: ${error.message}`;
   }
 }
 
@@ -146,6 +184,25 @@ export const onGet: RequestHandler = async ({ json, request }) => {
     let updateInfo = "";
 
     try {
+      // Check if we're in a git repository first
+      try {
+        await executeCommand("git rev-parse --git-dir");
+      } catch {
+        updateInfo = "Git repository not available - updates disabled";
+        json(200, {
+          success: true,
+          data: {
+            gitStatus,
+            updatesAvailable,
+            updateInfo,
+            isDocker: isRunningInDocker(),
+            containerName: process.env.CONTAINER_NAME || "prometheus",
+            currentTime: new Date().toISOString(),
+          },
+        });
+        return;
+      }
+
       await executeCommand("git fetch origin");
       const { stdout: behindOutput } = await executeCommand(
         "git rev-list --count HEAD..origin/master"
@@ -193,7 +250,26 @@ export const onPost: RequestHandler = async ({ json, request }) => {
   }
 
   try {
-    const { action } = await request.json();
+    let action: string;
+    try {
+      const body = await request.json();
+      action = body.action;
+    } catch (jsonError) {
+      console.error("Error parsing request JSON:", jsonError);
+      json(400, {
+        success: false,
+        error: "Invalid JSON in request body",
+      });
+      return;
+    }
+
+    if (!action) {
+      json(400, {
+        success: false,
+        error: "Action parameter is required",
+      });
+      return;
+    }
 
     if (action === "update") {
       // Pull latest changes
