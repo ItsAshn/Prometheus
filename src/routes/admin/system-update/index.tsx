@@ -1,7 +1,6 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
-import { SystemUpdateManager } from "~/components/admin/system-update-manager";
 import { SimpleSystemUpdater } from "~/components/admin/simple-system-updater";
 import {
   checkAdminAuthServer,
@@ -127,9 +126,6 @@ export default component$(() => {
               </a>
             </div>
             <SimpleSystemUpdater />
-            <hr style="margin: 40px 0; border: 1px solid #eee;" />
-            <h2>Advanced System Updates</h2>
-            <SystemUpdateManager />
           </main>
         </div>
       </div>

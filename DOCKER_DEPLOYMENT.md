@@ -120,9 +120,11 @@ docker-compose logs -f qwik-app
 # Restart services
 docker-compose restart qwik-app
 
-# Update the application
+# Update the application (manual method)
 docker-compose pull
 docker-compose up -d --build
+
+# Note: You can also use the Web-Based Update System (see below)
 
 # Backup data
 docker run --rm -v prometheus-qwik-app_video-data:/data -v $(pwd):/backup alpine tar czf /backup/video-backup.tar.gz -C /data .
@@ -130,6 +132,33 @@ docker run --rm -v prometheus-qwik-app_video-data:/data -v $(pwd):/backup alpine
 # Restore data
 docker run --rm -v prometheus-qwik-app_video-data:/data -v $(pwd):/backup alpine tar xzf /backup/video-backup.tar.gz -C /data
 ```
+
+## Web-Based Updates (Recommended!)
+
+The application includes a **simple update system** accessible through the admin panel - **no command line required!**
+
+### How to Update via Web Interface
+
+1. **Access your deployed application** (through your Cloudflare tunnel domain)
+2. **Login to Admin Panel**: Navigate to `/admin` and login with your admin credentials
+3. **Go to System Updates**: Click "System Updates" in the admin dashboard
+4. **One-Click Update**: Click "📥 Update from GitHub" button
+5. **Automatic Restart**: The container automatically restarts with the latest version
+
+### Update System Features
+
+- **✅ Super Simple**: Just click a button - no technical knowledge needed
+- **✅ GitHub Integration**: Downloads latest code directly from the repository
+- **✅ Docker-Optimized**: Designed specifically for container deployments
+- **✅ No Git Required**: Works without Git installed in the container
+- **✅ Reliable**: Uses simple HTTP requests to avoid common issues
+- **✅ Secure**: Requires admin authentication
+- **✅ Real-time Feedback**: Shows progress and results immediately
+
+### Additional Options
+
+- **🔄 Restart Container**: Restart without updating (useful for troubleshooting)
+- **ℹ️ Status Check**: See current version and available updates
 
 ## Monitoring and Health Checks
 

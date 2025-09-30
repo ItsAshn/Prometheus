@@ -5,7 +5,7 @@ import { server$ } from "@builder.io/qwik-city";
 const performSimpleUpdate = server$(async function () {
   try {
     const response = await fetch(
-      `${this.url.origin}/api/admin/system-update/simple?action=update`,
+      `${this.url.origin}/api/admin/system-update?action=update`,
       {
         method: "GET",
         headers: {
@@ -29,7 +29,7 @@ const performSimpleUpdate = server$(async function () {
 const performSimpleRestart = server$(async function () {
   try {
     const response = await fetch(
-      `${this.url.origin}/api/admin/system-update/simple?action=restart`,
+      `${this.url.origin}/api/admin/system-update?action=restart`,
       {
         method: "GET",
         headers: {
