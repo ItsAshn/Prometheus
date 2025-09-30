@@ -337,43 +337,46 @@ export const onPost: RequestHandler = async ({ json, request }) => {
 
   try {
     let action: string;
+
+    // Handle different ways the body might arrive
     try {
-      // Check if request has a body
-      const contentType = request.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        json(400, {
-          success: false,
-          error: "Content-Type must be application/json",
-        });
-        return;
-      }
-
-      // Check content length
-      const contentLength = request.headers.get("content-length");
-      if (contentLength === "0" || contentLength === null) {
-        json(400, {
-          success: false,
-          error: "Request body cannot be empty",
-        });
-        return;
-      }
-
+      // Method 1: Try the standard approach first
       const body = await request.json();
       action = body?.action;
-    } catch (jsonError) {
-      console.error("Error parsing request JSON:", jsonError);
-      json(400, {
-        success: false,
-        error:
-          'Invalid JSON in request body. Expected: {"action": "update" or "restart"}',
-      });
-      return;
+    } catch {
+      // Method 2: If that fails, the body stream might have been consumed
+      // Try to get it from form data or other sources
+      try {
+        const formData = await request.formData();
+        const actionFromForm = formData.get("action");
+        if (actionFromForm) {
+          action = String(actionFromForm);
+        } else {
+          throw new Error("No action in form data");
+        }
+      } catch {
+        // Method 3: Try URL search params as last resort
+        const url = new URL(request.url);
+        const actionFromQuery = url.searchParams.get("action");
+        if (actionFromQuery) {
+          action = actionFromQuery;
+        } else {
+          // If all methods fail, return a helpful error
+          json(400, {
+            success: false,
+            error:
+              "Could not parse request. Please ensure you're sending JSON with 'action' field, or try refreshing the page.",
+          });
+          return;
+        }
+      }
     }
 
-    if (!action) {
+    // Validate the action
+    if (!action || (action !== "update" && action !== "restart")) {
       json(400, {
         success: false,
-        error: "Action parameter is required. Use 'update' or 'restart'",
+        error: `Invalid action: '${action}'. Must be 'update' or 'restart'.`,
       });
       return;
     }
