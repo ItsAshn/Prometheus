@@ -70,20 +70,16 @@ async function getGitStatus(): Promise<{
   remoteUrl: string;
   lastCommit: string;
 }> {
+  // For Docker deployments without Git, return safe defaults
+  // This avoids all Git-related errors in production environments
   try {
-    // Check if we're in a git repository first
-    try {
-      await executeCommand("git rev-parse --git-dir");
-    } catch {
-      // Not a git repository, return default values
-      return {
-        currentBranch: "unknown",
-        hasChanges: false,
-        remoteUrl: "not-available",
-        lastCommit: "No Git repository found",
-      };
-    }
+    // Quick check if git command is even available
+    await executeCommand("git --version");
 
+    // Check if we're in a git repository
+    await executeCommand("git rev-parse --git-dir");
+
+    // Only if both checks pass, try to get Git info
     const [branchResult, statusResult, remoteResult, commitResult] =
       await Promise.all([
         executeCommand("git branch --show-current").catch(() => ({
@@ -110,13 +106,13 @@ async function getGitStatus(): Promise<{
       remoteUrl: remoteResult.stdout.trim() || "not-available",
       lastCommit: commitResult.stdout.trim() || "No commits found",
     };
-  } catch (error: any) {
-    // Return safe defaults instead of throwing
+  } catch {
+    // Git not available or not in a repository - return safe defaults
     return {
-      currentBranch: "error",
+      currentBranch: "not-available",
       hasChanges: false,
-      remoteUrl: "error",
-      lastCommit: `Error: ${error.message}`,
+      remoteUrl: "not-available",
+      lastCommit: "Git not available (GitHub updates enabled)",
     };
   }
 }
@@ -136,25 +132,28 @@ async function getLatestGitHubRelease(): Promise<{
 } | null> {
   try {
     const { owner, repo } = getGitHubInfo();
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases/latest`);
-    
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/releases/latest`
+    );
+
     if (!response.ok) {
       throw new Error(`GitHub API error: ${response.status}`);
     }
-    
+
     const release = await response.json();
-    
+
     // Find the source code zip asset
-    const zipAsset = release.assets?.find((asset: any) => asset.name.endsWith('.zip')) || 
-                    { browser_download_url: release.zipball_url };
-    
+    const zipAsset = release.assets?.find((asset: any) =>
+      asset.name.endsWith(".zip")
+    ) || { browser_download_url: release.zipball_url };
+
     return {
       version: release.tag_name,
       downloadUrl: zipAsset.browser_download_url,
-      releaseNotes: release.body || 'No release notes available'
+      releaseNotes: release.body || "No release notes available",
     };
   } catch (error: any) {
-    console.error('Error fetching GitHub release:', error);
+    console.error("Error fetching GitHub release:", error);
     return null;
   }
 }
@@ -187,7 +186,7 @@ async function downloadAndExtractUpdate(): Promise<string> {
 
     const zipPath = join(tempDir, "update.zip");
     const fileStream = createWriteStream(zipPath);
-    
+
     if (response.body) {
       const reader = response.body.getReader();
       while (true) {
@@ -205,9 +204,9 @@ async function downloadAndExtractUpdate(): Promise<string> {
 echo "Update downloaded: ${release.version}"
 echo "Please restart the container to apply updates."
 `;
-    
+
     writeFileSync(join(tempDir, "update.sh"), updateScript);
-    
+
     return `Successfully downloaded version ${release.version}:\n${release.releaseNotes.substring(0, 500)}...\n\nRestart required to apply changes.`;
   } catch (error: any) {
     return `Failed to download update: ${error.message}`;
@@ -247,13 +246,13 @@ export const onGet: RequestHandler = async ({ json, request }) => {
 
     try {
       latestRelease = await getLatestGitHubRelease();
-      
+
       if (latestRelease) {
         const currentVersion = process.env.APP_VERSION || "v1.0.0";
-        
+
         if (currentVersion !== latestRelease.version) {
           updatesAvailable = true;
-          updateInfo = `New version available: ${latestRelease.version}\n\nRelease Notes:\n${latestRelease.releaseNotes.substring(0, 300)}${latestRelease.releaseNotes.length > 300 ? '...' : ''}`;
+          updateInfo = `New version available: ${latestRelease.version}\n\nRelease Notes:\n${latestRelease.releaseNotes.substring(0, 300)}${latestRelease.releaseNotes.length > 300 ? "..." : ""}`;
         } else {
           updateInfo = "System is up to date.";
         }

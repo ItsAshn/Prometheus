@@ -31,6 +31,8 @@ A self-hosted video platform that gives you complete control over your content. 
 
 ## 🚀 Quick Start
 
+> 📖 **For complete deployment instructions with easy updates, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
 ### Docker (Recommended)
 
 ```bash
@@ -42,6 +44,8 @@ docker-compose up -d
 ```
 
 **→ Access at:** http://localhost:3000
+
+**🔄 Updates:** Use the built-in admin panel to update from GitHub releases - no Git required!
 
 ### Manual Setup
 

@@ -248,7 +248,8 @@ export const SystemUpdateManager = component$(() => {
       <div class="admin-card">
         <h3>🔄 System Updates</h3>
         <p>
-          Download the latest version from GitHub releases and restart your Docker container.
+          Download the latest version from GitHub releases and restart your
+          Docker container.
         </p>
 
         {store.error && (
@@ -310,15 +311,11 @@ export const SystemUpdateManager = component$(() => {
               </div>
               <div class="status-item">
                 <strong>Current Version:</strong>{" "}
-                <span class="status-info">
-                  {store.status.currentVersion}
-                </span>
+                <span class="status-info">{store.status.currentVersion}</span>
               </div>
               <div class="status-item">
                 <strong>Latest Version:</strong>{" "}
-                <span class="status-info">
-                  {store.status.latestVersion}
-                </span>
+                <span class="status-info">{store.status.latestVersion}</span>
               </div>
               <div class="status-item">
                 <strong>Environment:</strong>{" "}

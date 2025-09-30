@@ -29,7 +29,7 @@ export const Auth = component$(() => {
   const confirmPassword = useSignal("");
   const error = useSignal("");
 
-  // Check if credentials exist on component mount
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
     const storedCredentials = localStorage.getItem("app-credentials");
     if (!storedCredentials) {
