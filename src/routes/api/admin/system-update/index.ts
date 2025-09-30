@@ -124,7 +124,7 @@ function getGitHubInfo() {
   return { owner, repo };
 }
 
-// Helper function to get latest GitHub release
+// Helper function to get latest GitHub release or commit
 async function getLatestGitHubRelease(): Promise<{
   version: string;
   downloadUrl: string;
@@ -132,26 +132,44 @@ async function getLatestGitHubRelease(): Promise<{
 } | null> {
   try {
     const { owner, repo } = getGitHubInfo();
-    const response = await fetch(
+
+    // Try to get the latest release first
+    let response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/releases/latest`
     );
 
-    if (!response.ok) {
-      throw new Error(`GitHub API error: ${response.status}`);
+    if (response.ok) {
+      // We have releases - use the latest release
+      const release = await response.json();
+
+      const zipAsset = release.assets?.find((asset: any) =>
+        asset.name.endsWith(".zip")
+      ) || { browser_download_url: release.zipball_url };
+
+      return {
+        version: release.tag_name,
+        downloadUrl: zipAsset.browser_download_url,
+        releaseNotes: release.body || "No release notes available",
+      };
+    } else if (response.status === 404) {
+      // No releases found - fall back to latest commit
+      console.log("No releases found, checking latest commit...");
+
+      response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/commits/master`
+      );
+
+      if (response.ok) {
+        const commit = await response.json();
+        return {
+          version: commit.sha.substring(0, 7), // Short commit hash
+          downloadUrl: `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`,
+          releaseNotes: `Latest commit: ${commit.commit.message}\n\nCommitted by: ${commit.commit.author.name} on ${new Date(commit.commit.author.date).toLocaleDateString()}`,
+        };
+      }
     }
 
-    const release = await response.json();
-
-    // Find the source code zip asset
-    const zipAsset = release.assets?.find((asset: any) =>
-      asset.name.endsWith(".zip")
-    ) || { browser_download_url: release.zipball_url };
-
-    return {
-      version: release.tag_name,
-      downloadUrl: zipAsset.browser_download_url,
-      releaseNotes: release.body || "No release notes available",
-    };
+    throw new Error(`GitHub API error: ${response.status}`);
   } catch (error: any) {
     console.error("Error fetching GitHub release:", error);
     return null;
@@ -168,7 +186,7 @@ async function downloadAndExtractUpdate(): Promise<string> {
 
     // Check current version
     const currentVersion = process.env.APP_VERSION || "unknown";
-    if (currentVersion === release.version) {
+    if (currentVersion !== "unknown" && currentVersion === release.version) {
       return "Already up to date - you have the latest version.";
     }
 
@@ -248,16 +266,41 @@ export const onGet: RequestHandler = async ({ json, request }) => {
       latestRelease = await getLatestGitHubRelease();
 
       if (latestRelease) {
-        const currentVersion = process.env.APP_VERSION || "v1.0.0";
+        const currentVersion = process.env.APP_VERSION || "unknown";
 
-        if (currentVersion !== latestRelease.version) {
+        // Handle different version formats (semver vs commit hash)
+        let isUpdateAvailable = false;
+        if (currentVersion === "unknown" || currentVersion === "v1.0.0") {
+          // Default version, updates are likely available
+          isUpdateAvailable = true;
+        } else if (
+          latestRelease.version.length === 7 &&
+          currentVersion.length === 7
+        ) {
+          // Both are commit hashes - compare them
+          isUpdateAvailable = currentVersion !== latestRelease.version;
+        } else if (
+          latestRelease.version.startsWith("v") &&
+          currentVersion.startsWith("v")
+        ) {
+          // Both are version tags - compare them
+          isUpdateAvailable = currentVersion !== latestRelease.version;
+        } else {
+          // Mixed formats - assume update is available
+          isUpdateAvailable = true;
+        }
+
+        if (isUpdateAvailable) {
           updatesAvailable = true;
-          updateInfo = `New version available: ${latestRelease.version}\n\nRelease Notes:\n${latestRelease.releaseNotes.substring(0, 300)}${latestRelease.releaseNotes.length > 300 ? "..." : ""}`;
+          const releaseType =
+            latestRelease.version.length === 7 ? "commit" : "release";
+          updateInfo = `New ${releaseType} available: ${latestRelease.version}\n\n${latestRelease.releaseNotes.substring(0, 400)}${latestRelease.releaseNotes.length > 400 ? "..." : ""}`;
         } else {
           updateInfo = "System is up to date.";
         }
       } else {
-        updateInfo = "Unable to check for updates from GitHub.";
+        updateInfo =
+          "Unable to check for updates from GitHub. Please check your internet connection.";
       }
     } catch (error: any) {
       updateInfo = `Unable to check for updates: ${error.message}`;
@@ -295,13 +338,34 @@ export const onPost: RequestHandler = async ({ json, request }) => {
   try {
     let action: string;
     try {
+      // Check if request has a body
+      const contentType = request.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        json(400, {
+          success: false,
+          error: "Content-Type must be application/json",
+        });
+        return;
+      }
+
+      // Check content length
+      const contentLength = request.headers.get("content-length");
+      if (contentLength === "0" || contentLength === null) {
+        json(400, {
+          success: false,
+          error: "Request body cannot be empty",
+        });
+        return;
+      }
+
       const body = await request.json();
-      action = body.action;
+      action = body?.action;
     } catch (jsonError) {
       console.error("Error parsing request JSON:", jsonError);
       json(400, {
         success: false,
-        error: "Invalid JSON in request body",
+        error:
+          'Invalid JSON in request body. Expected: {"action": "update" or "restart"}',
       });
       return;
     }
@@ -309,7 +373,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
     if (!action) {
       json(400, {
         success: false,
-        error: "Action parameter is required",
+        error: "Action parameter is required. Use 'update' or 'restart'",
       });
       return;
     }
