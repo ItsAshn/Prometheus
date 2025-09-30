@@ -162,7 +162,7 @@ async function getLatestGitHubRelease(): Promise<{
       if (response.ok) {
         const commit = await response.json();
         return {
-          version: commit.sha.substring(0, 7), // Short commit hash
+          version: commit.sha.substring(0, 7),
           downloadUrl: `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`,
           releaseNotes: `Latest commit: ${commit.commit.message}\n\nCommitted by: ${commit.commit.author.name} on ${new Date(commit.commit.author.date).toLocaleDateString()}`,
         };
