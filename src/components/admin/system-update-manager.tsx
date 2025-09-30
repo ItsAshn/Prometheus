@@ -10,6 +10,8 @@ interface SystemStatus {
   };
   updatesAvailable: boolean;
   updateInfo: string;
+  currentVersion: string;
+  latestVersion: string;
   isDocker: boolean;
   containerName: string;
   currentTime: string;
@@ -246,7 +248,7 @@ export const SystemUpdateManager = component$(() => {
       <div class="admin-card">
         <h3>🔄 System Updates</h3>
         <p>
-          Pull the latest version from Git and restart your Docker container.
+          Download the latest version from GitHub releases and restart your Docker container.
         </p>
 
         {store.error && (
@@ -304,6 +306,18 @@ export const SystemUpdateManager = component$(() => {
                   }
                 >
                   {store.status.gitStatus.hasChanges ? "Yes" : "No"}
+                </span>
+              </div>
+              <div class="status-item">
+                <strong>Current Version:</strong>{" "}
+                <span class="status-info">
+                  {store.status.currentVersion}
+                </span>
+              </div>
+              <div class="status-item">
+                <strong>Latest Version:</strong>{" "}
+                <span class="status-info">
+                  {store.status.latestVersion}
                 </span>
               </div>
               <div class="status-item">

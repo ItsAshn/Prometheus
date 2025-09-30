@@ -7,6 +7,10 @@ RUN apk add --no-cache ffmpeg git docker-cli
 # Create app directory
 WORKDIR /app
 
+# Set version information (can be overridden during build)
+ARG APP_VERSION=v1.0.0
+ENV APP_VERSION=$APP_VERSION
+
 # Create necessary directories for the application
 RUN mkdir -p /app/public/videos/hls /app/temp /app/tmp /app/data
 
