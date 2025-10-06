@@ -1,6 +1,6 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { AdminAuth } from "~/components/admin/admin-auth";
+import AdminAuth from "~/components/admin/AdminAuth";
 
 export default component$(() => {
   return (

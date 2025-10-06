@@ -1,7 +1,7 @@
 import { component$, useStylesScoped$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { VideoList } from "~/components/video/video-list";
 import styles from "./index.css?inline";
+import VideoList from "~/components/video/VideoList";
 
 export default component$(() => {
   useStylesScoped$(styles);
@@ -17,7 +17,14 @@ export default component$(() => {
             </p>
           </div>
 
-          <VideoList isAdmin={false} />
+          <VideoList
+            displayMode="grid"
+            showTitles={true}
+            enablePlayer={false}
+            showActions={false}
+            showMetadata={true}
+            sortBy="newest"
+          />
         </main>
       </div>
     </div>

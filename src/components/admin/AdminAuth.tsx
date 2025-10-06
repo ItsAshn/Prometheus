@@ -11,7 +11,7 @@ import {
   loginAdminServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
-import styles from "./admin-auth.css?inline";
+import styles from "./adminAuth.css?inline";
 
 interface AdminAuthStore {
   isAuthenticated: boolean;
@@ -22,7 +22,7 @@ interface AdminAuthStore {
   } | null;
 }
 
-export const AdminAuth = component$(() => {
+export default component$(() => {
   useStylesScoped$(styles);
   const authStore = useStore<AdminAuthStore>({
     isAuthenticated: false,
