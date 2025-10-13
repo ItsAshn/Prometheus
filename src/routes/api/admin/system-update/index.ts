@@ -1,5 +1,8 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
 import jwt from "jsonwebtoken";
+import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
 
@@ -32,18 +35,14 @@ function verifyAdminToken(request: Request): boolean {
   }
 }
 
-// Helper function to restart Docker container
-async function restartDockerContainer(): Promise<string> {
+// Helper function to get current version
+function getCurrentVersion(): string {
   try {
-    // Use a simple approach - send SIGTERM to the current process after a delay
-    // This will cause the container to restart if it's configured with restart: unless-stopped
-    setTimeout(() => {
-      process.kill(process.pid, "SIGTERM");
-    }, 3000);
-
-    return "Container restart initiated. The application will restart in a few seconds...";
-  } catch (error: any) {
-    throw new Error(`Failed to restart Docker container: ${error.message}`);
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    return packageJson.version || "1.0.0";
+  } catch {
+    return "1.0.0";
   }
 }
 
@@ -54,66 +53,281 @@ function getGitHubInfo() {
   return { owner, repo };
 }
 
-// Helper function to download latest update
-async function downloadLatestUpdate(): Promise<string> {
+// Helper function to fetch latest GitHub release
+async function getLatestRelease(): Promise<{
+  version: string;
+  downloadUrl: string;
+  releaseNotes: string;
+}> {
+  const { owner, repo } = getGitHubInfo();
+
   try {
-    const { owner, repo } = getGitHubInfo();
-
-    // First try to get the latest release
-    let response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/releases/latest`
+    // Try to get the latest release
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/releases/latest`,
+      {
+        headers: {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "Prometheus-Update-System",
+        },
+      }
     );
-
-    let version = "unknown";
-    let downloadUrl = "";
 
     if (response.ok) {
       const release = await response.json();
-      version = release.tag_name;
-      downloadUrl = release.zipball_url;
+      return {
+        version: release.tag_name,
+        downloadUrl: release.tarball_url,
+        releaseNotes: release.body || "No release notes available",
+      };
     } else {
-      // No releases - use latest commit from master
-      response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/commits/master`
+      // Fallback to the main branch
+      const branchResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/branches/various-updates`,
+        {
+          headers: {
+            Accept: "application/vnd.github.v3+json",
+            "User-Agent": "Prometheus-Update-System",
+          },
+        }
       );
 
-      if (response.ok) {
-        const commit = await response.json();
-        version = commit.sha.substring(0, 7);
-        downloadUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/master.zip`;
-      } else {
-        throw new Error(`GitHub API error: ${response.status}`);
+      if (branchResponse.ok) {
+        const branch = await branchResponse.json();
+        return {
+          version: `dev-${branch.commit.sha.substring(0, 7)}`,
+          downloadUrl: `https://github.com/${owner}/${repo}/archive/refs/heads/various-updates.tar.gz`,
+          releaseNotes: "Latest development version from main branch",
+        };
       }
     }
 
-    // Create a simple marker file to indicate update was triggered
-    const fs = await import("fs");
-    const path = await import("path");
-
-    const tempDir = path.join(process.cwd(), "temp");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    const updateMarker = {
-      version,
-      downloadUrl,
-      timestamp: new Date().toISOString(),
-      status: "download_initiated",
-    };
-
-    fs.writeFileSync(
-      path.join(tempDir, "update-status.json"),
-      JSON.stringify(updateMarker, null, 2)
-    );
-
-    return `Update to version ${version} initiated successfully. Container will restart to apply changes.`;
+    throw new Error("Failed to fetch release information from GitHub");
   } catch (error: any) {
-    throw new Error(`Failed to initiate update: ${error.message}`);
+    throw new Error(`GitHub API error: ${error.message}`);
   }
 }
 
-// Simple GET-based update system to avoid JSON parsing issues
+// Helper function to download and extract update
+async function downloadAndExtractUpdate(downloadUrl: string): Promise<void> {
+  const tempDir = path.join(process.cwd(), "temp");
+  const updateDir = path.join(tempDir, "update");
+
+  // Clean up any existing update directory
+  if (fs.existsSync(updateDir)) {
+    fs.rmSync(updateDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(updateDir, { recursive: true });
+
+  const tarballPath = path.join(tempDir, "update.tar.gz");
+
+  try {
+    // Download the tarball
+    console.log(`Downloading from ${downloadUrl}...`);
+    const response = await fetch(downloadUrl, {
+      headers: {
+        "User-Agent": "Prometheus-Update-System",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tarballPath, Buffer.from(arrayBuffer));
+
+    // Extract the tarball
+    console.log("Extracting update...");
+    execSync(`tar -xzf ${tarballPath} -C ${updateDir} --strip-components=1`, {
+      stdio: "inherit",
+    });
+
+    // Clean up tarball
+    fs.unlinkSync(tarballPath);
+
+    console.log("Update downloaded and extracted successfully");
+  } catch (error: any) {
+    throw new Error(`Failed to download/extract update: ${error.message}`);
+  }
+}
+
+// Helper function to apply update
+async function applyUpdate(version: string): Promise<void> {
+  const updateDir = path.join(process.cwd(), "temp", "update");
+  const appDir = process.cwd();
+
+  try {
+    console.log("Applying update...");
+
+    // Backup critical files
+    const backupDir = path.join(process.cwd(), "temp", "backup");
+    if (fs.existsSync(backupDir)) {
+      fs.rmSync(backupDir, { recursive: true, force: true });
+    }
+    fs.mkdirSync(backupDir, { recursive: true });
+
+    // Backup .env if exists
+    const envPath = path.join(appDir, ".env");
+    if (fs.existsSync(envPath)) {
+      fs.copyFileSync(envPath, path.join(backupDir, ".env"));
+    }
+
+    // Copy new files (excluding certain directories)
+    const excludeDirs = [
+      "node_modules",
+      "dist",
+      "server",
+      ".git",
+      "temp",
+      "public/videos",
+      "data",
+    ];
+
+    function copyRecursive(src: string, dest: string) {
+      const stat = fs.statSync(src);
+
+      if (stat.isDirectory()) {
+        const dirName = path.basename(src);
+        if (excludeDirs.includes(dirName)) {
+          return;
+        }
+
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
+        }
+
+        const files = fs.readdirSync(src);
+        for (const file of files) {
+          copyRecursive(path.join(src, file), path.join(dest, file));
+        }
+      } else {
+        fs.copyFileSync(src, dest);
+      }
+    }
+
+    copyRecursive(updateDir, appDir);
+
+    // Restore .env if it was backed up
+    if (fs.existsSync(path.join(backupDir, ".env"))) {
+      fs.copyFileSync(path.join(backupDir, ".env"), envPath);
+    }
+
+    // Update package.json version
+    const packageJsonPath = path.join(appDir, "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    packageJson.version = version.replace(/^v/, "");
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
+    console.log("Update applied successfully");
+  } catch (error: any) {
+    throw new Error(`Failed to apply update: ${error.message}`);
+  }
+}
+
+// Helper function to rebuild application
+async function rebuildApplication(): Promise<void> {
+  try {
+    console.log("Installing dependencies...");
+    execSync("pnpm install --frozen-lockfile", {
+      stdio: "inherit",
+      cwd: process.cwd(),
+    });
+
+    console.log("Building application...");
+    execSync("pnpm build.client && pnpm build.server", {
+      stdio: "inherit",
+      cwd: process.cwd(),
+      env: { ...process.env, NODE_ENV: "production" },
+    });
+
+    console.log("Application rebuilt successfully");
+  } catch (error: any) {
+    throw new Error(`Failed to rebuild application: ${error.message}`);
+  }
+}
+
+// Helper function to restart Docker container
+async function restartDockerContainer(): Promise<string> {
+  try {
+    const containerName = process.env.CONTAINER_NAME || "prometheus";
+
+    // Schedule container restart
+    setTimeout(() => {
+      console.log("Restarting container...");
+      try {
+        execSync(`docker restart ${containerName}`, { stdio: "inherit" });
+      } catch {
+        // Fallback to process kill
+        process.kill(process.pid, "SIGTERM");
+      }
+    }, 3000);
+
+    return "Container restart initiated. The application will restart in a few seconds...";
+  } catch (error: any) {
+    throw new Error(`Failed to restart Docker container: ${error.message}`);
+  }
+}
+
+// Main update function
+async function performFullUpdate(): Promise<{
+  success: boolean;
+  message: string;
+  details: string[];
+}> {
+  const details: string[] = [];
+
+  try {
+    // Get current and latest versions
+    const currentVersion = getCurrentVersion();
+    details.push(`📦 Current version: ${currentVersion}`);
+
+    const latestRelease = await getLatestRelease();
+    details.push(`🆕 Latest version: ${latestRelease.version}`);
+
+    if (currentVersion === latestRelease.version) {
+      return {
+        success: true,
+        message: "Already up to date",
+        details,
+      };
+    }
+
+    // Download and extract update
+    details.push("⬇️ Downloading update...");
+    await downloadAndExtractUpdate(latestRelease.downloadUrl);
+    details.push("✅ Download complete");
+
+    // Apply update
+    details.push("📝 Applying update...");
+    await applyUpdate(latestRelease.version);
+    details.push("✅ Update applied");
+
+    // Rebuild application
+    details.push("🔨 Rebuilding application...");
+    await rebuildApplication();
+    details.push("✅ Build complete");
+
+    // Restart container
+    details.push("🔄 Restarting container...");
+    await restartDockerContainer();
+
+    return {
+      success: true,
+      message: `Successfully updated to ${latestRelease.version}`,
+      details,
+    };
+  } catch (error: any) {
+    details.push(`❌ Error: ${error.message}`);
+    return {
+      success: false,
+      message: "Update failed",
+      details,
+    };
+  }
+}
+
+// Simple GET-based update system
 export const onGet: RequestHandler = async ({ json, request, url }) => {
   if (!verifyAdminToken(request)) {
     json(401, { message: "Unauthorized" });
@@ -124,17 +338,14 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
     const action = url.searchParams.get("action") || "status";
 
     if (action === "update") {
-      // Download and prepare update
-      const updateResult = await downloadLatestUpdate();
-
-      // Restart container after a short delay
-      const restartResult = await restartDockerContainer();
+      // Perform full update from GitHub
+      const result = await performFullUpdate();
 
       json(200, {
-        success: true,
-        message: "Update initiated successfully!",
-        details: [updateResult, restartResult].join("\n\n"),
-        restarting: true,
+        success: result.success,
+        message: result.message,
+        details: result.details.join("\n"),
+        restarting: result.success,
       });
     } else if (action === "restart") {
       // Just restart without updating
@@ -146,22 +357,44 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
         details: restartResult,
         restarting: true,
       });
+    } else if (action === "check") {
+      // Check for available updates
+      try {
+        const currentVersion = getCurrentVersion();
+        const latestRelease = await getLatestRelease();
+
+        json(200, {
+          success: true,
+          currentVersion,
+          latestVersion: latestRelease.version,
+          updateAvailable: currentVersion !== latestRelease.version,
+          releaseNotes: latestRelease.releaseNotes,
+        });
+      } catch (error: any) {
+        json(500, {
+          success: false,
+          error: `Failed to check for updates: ${error.message}`,
+        });
+      }
     } else {
       // Default: return status
+      const currentVersion = getCurrentVersion();
+
       json(200, {
         success: true,
-        message: "Simple update system ready",
+        message: "Update system ready",
         availableActions: [
+          "?action=check - Check for available updates",
           "?action=update - Download latest version and restart",
           "?action=restart - Restart container without updating",
           "?action=status - Show this status (default)",
         ],
-        currentVersion: process.env.APP_VERSION || "v1.0.0",
+        currentVersion,
         timestamp: new Date().toISOString(),
       });
     }
   } catch (error: any) {
-    console.error("Simple update system error:", error);
+    console.error("Update system error:", error);
     json(500, {
       success: false,
       error: error.message || "Update system error",

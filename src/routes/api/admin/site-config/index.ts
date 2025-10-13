@@ -9,6 +9,7 @@ const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
 interface SiteConfig {
   channelName: string;
   channelDescription: string;
+  aboutText?: string;
   customCss?: string;
   selectedTemplate?: string;
   lastUpdated: string;
@@ -19,6 +20,8 @@ const DEFAULT_CONFIG: SiteConfig = {
   channelName: "My Video Channel",
   channelDescription:
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.",
+  aboutText:
+    "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
   customCss: "",
   selectedTemplate: "retro",
   lastUpdated: new Date().toISOString(),
@@ -103,8 +106,13 @@ export const onPost: RequestHandler = async ({ json, request }) => {
 
   try {
     const body = await request.json();
-    const { channelName, channelDescription, customCss, selectedTemplate } =
-      body;
+    const {
+      channelName,
+      channelDescription,
+      aboutText,
+      customCss,
+      selectedTemplate,
+    } = body;
 
     if (!channelName || !channelDescription) {
       json(400, { message: "Channel name and description are required" });
@@ -114,6 +122,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
     const config: SiteConfig = {
       channelName: channelName.trim(),
       channelDescription: channelDescription.trim(),
+      aboutText: aboutText ? aboutText.trim() : "",
       customCss: customCss || "",
       selectedTemplate: selectedTemplate || "retro",
       lastUpdated: new Date().toISOString(),

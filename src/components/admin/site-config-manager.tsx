@@ -1,9 +1,11 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import "./site-config-manager.css";
 
 interface SiteConfig {
   channelName: string;
   channelDescription: string;
+  aboutText?: string;
   customCss?: string;
   selectedTemplate?: string;
   lastUpdated: string;
@@ -28,6 +30,7 @@ export const SiteConfigManager = component$(() => {
 
   const channelName = useSignal("");
   const channelDescription = useSignal("");
+  const aboutText = useSignal("");
   const customCss = useSignal("");
   const selectedTemplate = useSignal("retro");
 
@@ -56,6 +59,7 @@ export const SiteConfigManager = component$(() => {
   const saveSiteConfig = server$(async function (config: {
     channelName: string;
     channelDescription: string;
+    aboutText: string;
     customCss: string;
     selectedTemplate: string;
   }) {
@@ -143,6 +147,7 @@ export const SiteConfigManager = component$(() => {
       store.config = result.config;
       channelName.value = result.config.channelName;
       channelDescription.value = result.config.channelDescription;
+      aboutText.value = result.config.aboutText || "";
       customCss.value = result.config.customCss || "";
       selectedTemplate.value = result.config.selectedTemplate || "retro";
     } else {
@@ -166,6 +171,7 @@ export const SiteConfigManager = component$(() => {
       const config = {
         channelName: channelName.value.trim(),
         channelDescription: channelDescription.value.trim(),
+        aboutText: aboutText.value.trim(),
         customCss: customCss.value,
         selectedTemplate: selectedTemplate.value,
       };
@@ -302,6 +308,21 @@ export const SiteConfigManager = component$(() => {
               class="form-input"
               rows={3}
             />
+          </div>
+
+          <div class="form-group">
+            <label for="about-text">About Page Content</label>
+            <textarea
+              id="about-text"
+              bind:value={aboutText}
+              placeholder="Enter the content for your About page. You can use multiple paragraphs and basic formatting."
+              disabled={store.isSaving}
+              class="form-input"
+              rows={10}
+            />
+            <p class="form-help">
+              This text will be displayed on your channel's About page.
+            </p>
           </div>
 
           <div class="form-actions">
