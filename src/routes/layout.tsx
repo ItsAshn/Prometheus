@@ -1,12 +1,18 @@
-import { $, component$, Slot, useStore, useTask$ } from "@builder.io/qwik";
+import {
+  $,
+  component$,
+  Slot,
+  useStore,
+  useTask$,
+  useStylesScoped$,
+} from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
-import { Footer } from "~/components/footer/footer";
-import { Sidebar } from "~/components/sidebar/sidebar";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import {
   checkAdminAuthServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
+import styles from "./layout.css?inline";
 
 interface SiteConfig {
   channelName: string;
@@ -15,6 +21,8 @@ interface SiteConfig {
 }
 
 export default component$(() => {
+  useStylesScoped$(styles);
+
   const authStore = useStore({
     isAuthenticated: false,
     isLoading: true,
@@ -78,18 +86,60 @@ export default component$(() => {
 
   // Use site config for display, with fallbacks
   const channelName = siteStore.config?.channelName || "Your Video Channel";
+
   return (
-    <div>
-      <Sidebar
-        channelName={channelName}
-        isAuthenticated={authStore.isAuthenticated}
-        username={authStore.username}
-        isLoading={authStore.isLoading}
-        onLogout={handleLogout}
-      />
-      <ThemeToggle />
-      <Slot />
-      <Footer />
+    <div class="layout-container">
+      <header class="top-header">
+        <div class="header-content">
+          <div class="header-left">
+            <a href="/" class="logo-link">
+              <span class="logo-icon">📺</span>
+              <span class="logo-text">{channelName}</span>
+            </a>
+            <nav class="nav-links">
+              <a href="/" class="nav-link">
+                Home
+              </a>
+              <a href="/videos" class="nav-link">
+                Videos
+              </a>
+            </nav>
+          </div>
+
+          <div class="header-right">
+            <ThemeToggle />
+            {!authStore.isLoading && (
+              <>
+                {authStore.isAuthenticated ? (
+                  <>
+                    <div class="user-info">
+                      <span>👤</span>
+                      <span class="user-name">{authStore.username}</span>
+                    </div>
+                    <a href="/admin" class="btn-header btn-admin">
+                      Dashboard
+                    </a>
+                    <button
+                      onClick$={handleLogout}
+                      class="btn-header btn-logout"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <a href="/admin" class="btn-header btn-admin">
+                    Admin Login
+                  </a>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <Slot />
+      </main>
     </div>
   );
 });

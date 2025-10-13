@@ -1,33 +1,86 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { VideoUpload } from "~/components/video/video-upload";
-import { VideoList } from "~/components/video/VideoList";
 import { ProcessingStatus } from "~/components/video/processing-status";
+import VideoList from "~/components/video/VideoList";
+import "./index.css";
 
 export default component$(() => {
   return (
-    <div class="admin-page">
-      <div class="admin-container">
-        <div class="admin-header">
-          <h1>📹 Video Management</h1>
-          <div class="admin-nav">
+    <div class="admin-videos-page">
+      <div class="admin-videos-container">
+        {/* Page Header */}
+        <header class="admin-videos-header">
+          <div class="header-content">
+            <h1>
+              <span class="header-emoji">📹</span>
+              Video Management
+            </h1>
+            <p class="header-subtitle">
+              Upload, process, and manage your video library with HLS streaming
+              support
+            </p>
+          </div>
+          <div class="header-actions">
             <a href="/admin" class="back-link">
-              ← Back to Dashboard
+              <span class="back-icon">←</span>
+              Back to Dashboard
             </a>
           </div>
-        </div>
+        </header>
 
-        <main class="admin-content">
-          <VideoUpload />
+        {/* Main Content */}
+        <main class="admin-videos-content">
+          {/* Upload Section */}
+          <section class="section-card upload-section">
+            <div class="section-header">
+              <div>
+                <h2>
+                  <span class="section-icon">⬆️</span>
+                  Upload New Video
+                </h2>
+                <p class="section-description">
+                  Upload videos in MP4, WebM, or other supported formats. Videos
+                  will be automatically processed for HLS streaming.
+                </p>
+              </div>
+            </div>
+            <VideoUpload />
+          </section>
 
-          <ProcessingStatus />
+          {/* Processing Section */}
+          <section class="section-card processing-section">
+            <div class="section-header">
+              <div>
+                <h2>
+                  <span class="section-icon">⚙️</span>
+                  Processing Status
+                </h2>
+                <p class="section-description">
+                  Monitor the progress of videos being processed into HLS
+                  format.
+                </p>
+              </div>
+            </div>
+            <ProcessingStatus />
+          </section>
 
-          <div class="section-divider">
-            <h2>Uploaded Videos</h2>
-            <p>Manage your video library</p>
-          </div>
-
-          <VideoList isAdmin={true} />
+          {/* Video Library Section */}
+          <section class="section-card video-library-section">
+            <div class="video-library-header">
+              <div class="video-library-title">
+                <h2>
+                  <span class="section-icon">📚</span>
+                  Video Library
+                </h2>
+              </div>
+              <p class="section-description">
+                Browse and manage all uploaded videos. Click on any video to
+                view details, edit information, or delete.
+              </p>
+            </div>
+            <VideoList isAdmin={true} />
+          </section>
         </main>
       </div>
     </div>

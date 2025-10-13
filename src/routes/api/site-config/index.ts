@@ -7,6 +7,7 @@ const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
 interface SiteConfig {
   channelName: string;
   channelDescription: string;
+  aboutText?: string;
   customCss?: string;
   lastUpdated: string;
 }
@@ -16,6 +17,8 @@ const DEFAULT_CONFIG: SiteConfig = {
   channelName: "My Video Channel",
   channelDescription:
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.",
+  aboutText:
+    "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
   customCss: "",
   lastUpdated: new Date().toISOString(),
 };
@@ -39,6 +42,7 @@ export const onGet: RequestHandler = async ({ json }) => {
     const publicConfig = {
       channelName: config.channelName,
       channelDescription: config.channelDescription,
+      aboutText: config.aboutText,
       lastUpdated: config.lastUpdated,
     };
     json(200, publicConfig);

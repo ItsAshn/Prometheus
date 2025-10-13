@@ -3,12 +3,13 @@ import {
   useStore,
   useTask$,
   useVisibleTask$,
-  $,
   useStylesScoped$,
+  useSignal,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
 import VideoList from "~/components/video/VideoList";
+import { ChannelHeader } from "~/components/channel/channel-header";
 import styles from "./index.css?inline";
 
 interface SiteConfig {
@@ -29,6 +30,8 @@ export default component$(() => {
     config: null as SiteConfig | null,
     isLoadingConfig: true,
   });
+
+  const videoCount = useSignal(0);
 
   // Server function to check admin auth status
   const checkAdminAuth = server$(async function () {
@@ -73,30 +76,26 @@ export default component$(() => {
     }
   });
 
-  // Server function for admin logout
-  const logoutAdmin = server$(async function () {
+  // Server function to get video count
+  const getVideoCount = server$(async function () {
     try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      // Clear the cookie on the server side as well
-      this.cookie.delete("admin-auth-token", { path: "/" });
-
-      return response.ok;
+      const response = await fetch(`${this.url.origin}/api/video/list`);
+      if (response.ok) {
+        const result = await response.json();
+        return result.success ? result.videos.length : 0;
+      }
+      return 0;
     } catch {
-      return false;
+      return 0;
     }
   });
 
   // Check authentication status and load site config on component load
   useTask$(async () => {
-    const [authStatus, configResult] = await Promise.all([
+    const [authStatus, configResult, count] = await Promise.all([
       checkAdminAuth(),
       loadSiteConfig(),
+      getVideoCount(),
     ]);
 
     authStore.isAuthenticated = authStatus.isAuthenticated;
@@ -107,6 +106,8 @@ export default component$(() => {
       siteStore.config = configResult.config;
     }
     siteStore.isLoadingConfig = false;
+
+    videoCount.value = count;
   });
 
   // Also check when page becomes visible (after redirect)
@@ -121,25 +122,6 @@ export default component$(() => {
     recheckAuth();
   });
 
-  const handleLogout = $(async () => {
-    try {
-      await logoutAdmin();
-      authStore.isAuthenticated = false;
-      authStore.username = "";
-
-      // Clear client-side cookie as additional measure
-      if (typeof document !== "undefined") {
-        document.cookie =
-          "admin-auth-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      }
-
-      // Force page reload to clear auth state
-      window.location.reload();
-    } catch {
-      console.error("Logout failed");
-    }
-  });
-
   // Use site config for display, with fallbacks
   const channelName = siteStore.config?.channelName || "Your Video Channel";
   const channelDescription =
@@ -147,72 +129,91 @@ export default component$(() => {
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.";
 
   return (
-    <div class="public-site">
-      <main class="site-content">
-        <section class="hero">
-          <div class="hero-content">
-            <h2>{channelName}</h2>
-            <p class="hero-description">{channelDescription}</p>
-            <div class="hero-features">
-              <span class="feature-tag">🚫 Ad-Free</span>
-              <span class="feature-tag">🔒 Private</span>
-              <span class="feature-tag">⚡ Fast Streaming</span>
-              <span class="feature-tag">📱 Mobile Ready</span>
-            </div>
-            <div class="hero-actions">
-              <a href="/videos" class="cta-primary">
-                📺 Browse Videos
-              </a>
-              {!authStore.isAuthenticated && (
-                <a href="/admin" class="cta-secondary">
-                  🔧 Admin Access
-                </a>
-              )}
-            </div>
-          </div>
+    <div class="channel-page">
+      <ChannelHeader
+        channelName={channelName}
+        channelDescription={channelDescription}
+        videoCount={videoCount.value}
+        isAuthenticated={authStore.isAuthenticated}
+        activeTab="home"
+      />
 
+      <div class="channel-content">
+        <div class="content-container">
           {authStore.isAuthenticated && (
-            <div class="admin-notice">
-              <h3>🔓 Administrator Access Active</h3>
-              <p>
-                Welcome back, <strong>{authStore.username}</strong>! You have
-                full control over your video platform.
-              </p>
-              <div class="admin-actions">
-                <a href="/admin" class="btn btn-primary btn-lg">
-                  🎛️ Dashboard
+            <section class="admin-quick-actions">
+              <h3 class="section-title">Admin Quick Actions</h3>
+              <div class="quick-actions-grid">
+                <a href="/admin" class="action-card">
+                  <span class="action-icon">🎛️</span>
+                  <div class="action-info">
+                    <h4>Dashboard</h4>
+                    <p>View overview & stats</p>
+                  </div>
                 </a>
-                <a href="/admin/videos" class="btn btn-primary btn-lg">
-                  📹 Manage Videos
+                <a href="/admin/videos" class="action-card">
+                  <span class="action-icon">�</span>
+                  <div class="action-info">
+                    <h4>Manage Videos</h4>
+                    <p>Upload & organize content</p>
+                  </div>
                 </a>
-                <a href="/admin/config" class="btn btn-primary btn-lg">
-                  ⚙️ Settings
+                <a href="/admin/config" class="action-card">
+                  <span class="action-icon">⚙️</span>
+                  <div class="action-info">
+                    <h4>Settings</h4>
+                    <p>Configure your channel</p>
+                  </div>
                 </a>
-                <button
-                  onClick$={handleLogout}
-                  class="btn btn-destructive btn-lg"
-                >
-                  🚪 Logout
-                </button>
+              </div>
+            </section>
+          )}
+
+          <section class="latest-videos-section">
+            <div class="section-header">
+              <h3 class="section-title">Latest Videos</h3>
+              <a href="/videos" class="view-all-link">
+                View All →
+              </a>
+            </div>
+            <VideoList
+              count={6}
+              showTitles={true}
+              displayMode="grid"
+              enablePlayer={false}
+              showActions={authStore.isAuthenticated}
+              showMetadata={true}
+              isAdmin={authStore.isAuthenticated}
+            />
+          </section>
+
+          <section class="about-section">
+            <h3 class="section-title">About This Channel</h3>
+            <div class="about-content">
+              <div class="about-card">
+                <span class="about-icon">🚫</span>
+                <h4>Ad-Free Experience</h4>
+                <p>Enjoy content without interruptions or advertisements</p>
+              </div>
+              <div class="about-card">
+                <span class="about-icon">🔒</span>
+                <h4>Private & Secure</h4>
+                <p>Self-hosted platform with complete data control</p>
+              </div>
+              <div class="about-card">
+                <span class="about-icon">⚡</span>
+                <h4>Fast Streaming</h4>
+                <p>HLS adaptive streaming for smooth playback</p>
+              </div>
+              <div class="about-card">
+                <span class="about-icon">📱</span>
+                <h4>Mobile Ready</h4>
+                <p>Watch anywhere on any device</p>
               </div>
             </div>
-          )}
-        </section>
-
-        <section class="latest-videos">
-          <div class="videos-section">
-            <h3>Latest Videos</h3>
-            <VideoList
-              count={4}
-              showTitles={true}
-              displayMode="compact"
-              enablePlayer={false}
-              showActions={false}
-              showMetadata={true}
-            />
-          </div>
-        </section>
-      </main>
+          </section>
+        </div>
+      </div>
     </div>
   );
 });

@@ -8,12 +8,12 @@ import {
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
 import styles from "./index.css?inline";
-import VideoList from "~/components/video/VideoList";
 import { ChannelHeader } from "~/components/channel/channel-header";
 
 interface SiteConfig {
   channelName: string;
   channelDescription: string;
+  aboutText?: string;
   lastUpdated: string;
 }
 
@@ -114,35 +114,91 @@ export default component$(() => {
   const channelDescription =
     siteStore.config?.channelDescription ||
     "Welcome to my self-hosted video streaming platform.";
+  const aboutText =
+    siteStore.config?.aboutText ||
+    "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control. Enjoy ad-free streaming with adaptive quality based on your connection speed.";
 
   return (
-    <div class="public-videos-page">
+    <div class="about-page">
       <ChannelHeader
         channelName={channelName}
         channelDescription={channelDescription}
         videoCount={videoCount.value}
         isAuthenticated={authStore.isAuthenticated}
-        activeTab="videos"
+        activeTab="about"
       />
-      <div class="site-container">
-        <main class="site-content">
-          <div class="videos-intro">
-            <h2>🎬 Video Collection</h2>
-            <p>
-              Enjoy high-quality streaming with adaptive bitrate delivery. All
-              videos are automatically optimized for your device and connection.
-            </p>
+      <div class="about-container">
+        <main class="about-content">
+          <div class="about-header">
+            <h2>📖 About This Channel</h2>
           </div>
 
-          <VideoList
-            displayMode="grid"
-            showTitles={true}
-            enablePlayer={false}
-            showActions={authStore.isAuthenticated}
-            showMetadata={true}
-            sortBy="newest"
-            isAdmin={authStore.isAuthenticated}
-          />
+          <div class="about-text-section">
+            {siteStore.isLoadingConfig ? (
+              <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading about information...</p>
+              </div>
+            ) : (
+              <div class="about-text">
+                {aboutText.split("\n").map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div class="about-features">
+            <h3>Platform Features</h3>
+            <div class="features-grid">
+              <div class="feature-item">
+                <span class="feature-icon">🚫</span>
+                <h4>Ad-Free Experience</h4>
+                <p>
+                  Enjoy uninterrupted viewing without any advertisements or
+                  sponsored content.
+                </p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">🔒</span>
+                <h4>Private & Secure</h4>
+                <p>
+                  Self-hosted infrastructure with complete control over your
+                  data and privacy.
+                </p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">⚡</span>
+                <h4>Fast Streaming</h4>
+                <p>
+                  HLS adaptive streaming technology for smooth playback on any
+                  connection.
+                </p>
+              </div>
+              <div class="feature-item">
+                <span class="feature-icon">📱</span>
+                <h4>Mobile Optimized</h4>
+                <p>
+                  Responsive design that works seamlessly across all devices and
+                  screen sizes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {authStore.isAuthenticated && (
+            <div class="admin-info-box">
+              <h4>👤 Admin Access</h4>
+              <p>
+                You're logged in as an administrator. You can edit the about
+                text in the{" "}
+                <a href="/admin/config" class="config-link">
+                  Site Configuration
+                </a>{" "}
+                page.
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>
@@ -150,11 +206,11 @@ export default component$(() => {
 });
 
 export const head: DocumentHead = {
-  title: "Video Library",
+  title: "About - Video Channel",
   meta: [
     {
       name: "description",
-      content: "Watch videos with HLS streaming",
+      content: "Learn more about this self-hosted video streaming platform",
     },
   ],
 };

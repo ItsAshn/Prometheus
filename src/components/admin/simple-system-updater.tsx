@@ -1,5 +1,30 @@
-import { component$, useSignal, $ } from "@builder.io/qwik";
+import { component$, useSignal, $, useVisibleTask$ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+
+// Check for updates
+const checkForUpdates = server$(async function () {
+  try {
+    const response = await fetch(
+      `${this.url.origin}/api/admin/system-update?action=check`,
+      {
+        method: "GET",
+        headers: {
+          Cookie: this.cookie.get("admin-auth-token")?.value
+            ? `admin-auth-token=${this.cookie.get("admin-auth-token")?.value}`
+            : "",
+        },
+      }
+    );
+
+    return await response.json();
+  } catch (error) {
+    console.error("Check updates error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+});
 
 // Simple GET-based update functions
 const performSimpleUpdate = server$(async function () {
@@ -52,8 +77,37 @@ const performSimpleRestart = server$(async function () {
 
 export const SimpleSystemUpdater = component$(() => {
   const isUpdating = useSignal(false);
+  const isCheckingUpdates = useSignal(false);
   const updateMessage = useSignal("");
   const updateStatus = useSignal<"idle" | "success" | "error">("idle");
+  const currentVersion = useSignal("");
+  const latestVersion = useSignal("");
+  const updateAvailable = useSignal(false);
+  const releaseNotes = useSignal("");
+
+  // Check for updates on component mount
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    await handleCheckUpdates();
+  });
+
+  const handleCheckUpdates = $(async () => {
+    isCheckingUpdates.value = true;
+    try {
+      const result = await checkForUpdates();
+
+      if (result.success) {
+        currentVersion.value = result.currentVersion || "Unknown";
+        latestVersion.value = result.latestVersion || "Unknown";
+        updateAvailable.value = result.updateAvailable || false;
+        releaseNotes.value = result.releaseNotes || "";
+      }
+    } catch (error) {
+      console.error("Failed to check for updates:", error);
+    } finally {
+      isCheckingUpdates.value = false;
+    }
+  });
 
   const handleUpdate = $(async () => {
     isUpdating.value = true;
@@ -68,10 +122,14 @@ export const SimpleSystemUpdater = component$(() => {
         updateMessage.value =
           result.message || "Update completed successfully!";
 
+        if (result.details) {
+          updateMessage.value += "\n\n" + result.details;
+        }
+
         if (result.restarting) {
           setTimeout(() => {
             updateMessage.value +=
-              "\n\nContainer is restarting... Please refresh in a moment.";
+              "\n\n⏳ Container is restarting... Please refresh in a moment.";
           }, 1000);
         }
       } else {
@@ -119,17 +177,61 @@ export const SimpleSystemUpdater = component$(() => {
 
   return (
     <div class="simple-system-updater">
-      <h3>🚀 Simple System Updates</h3>
-      <p class="description">
-        Easy one-click updates from GitHub without complex configuration.
-      </p>
+      <h3>🚀 System Updates</h3>
+      <p class="description">Manage system updates from GitHub releases.</p>
+
+      {/* Version Information */}
+      <div class="version-info">
+        <div class="version-item">
+          <span class="version-label">Current Version:</span>
+          <span class="version-value">
+            {isCheckingUpdates.value
+              ? "Checking..."
+              : currentVersion.value || "Unknown"}
+          </span>
+        </div>
+        <div class="version-item">
+          <span class="version-label">Latest Version:</span>
+          <span class="version-value">
+            {isCheckingUpdates.value
+              ? "Checking..."
+              : latestVersion.value || "Unknown"}
+          </span>
+        </div>
+        {updateAvailable.value && (
+          <div class="update-badge">✨ Update Available!</div>
+        )}
+        {!updateAvailable.value &&
+          !isCheckingUpdates.value &&
+          currentVersion.value && (
+            <div class="uptodate-badge">✅ Up to date</div>
+          )}
+      </div>
+
+      {/* Release Notes */}
+      {releaseNotes.value && updateAvailable.value && (
+        <div class="release-notes">
+          <h4>📝 Release Notes:</h4>
+          <pre>{releaseNotes.value}</pre>
+        </div>
+      )}
 
       <div class="update-actions">
         <button
           type="button"
-          class={`update-btn ${isUpdating.value ? "updating" : ""}`}
+          class={`check-btn ${isCheckingUpdates.value ? "checking" : ""}`}
+          onClick$={handleCheckUpdates}
+          disabled={isCheckingUpdates.value || isUpdating.value}
+        >
+          {isCheckingUpdates.value ? "🔄 Checking..." : "🔍 Check for Updates"}
+        </button>
+
+        <button
+          type="button"
+          class={`update-btn ${isUpdating.value ? "updating" : ""} ${!updateAvailable.value ? "disabled" : ""}`}
           onClick$={handleUpdate}
-          disabled={isUpdating.value}
+          disabled={isUpdating.value || !updateAvailable.value}
+          title={!updateAvailable.value ? "No updates available" : ""}
         >
           {isUpdating.value ? "🔄 Updating..." : "📥 Update from GitHub"}
         </button>
@@ -161,20 +263,20 @@ export const SimpleSystemUpdater = component$(() => {
         <h4>ℹ️ How this works:</h4>
         <ul>
           <li>
-            ✅ <strong>Update from GitHub:</strong> Downloads the latest code
-            and restarts the container
+            ✅ <strong>Check for Updates:</strong> Queries GitHub for the latest
+            release
+          </li>
+          <li>
+            ✅ <strong>Update from GitHub:</strong> Downloads the latest
+            release, rebuilds the app, and restarts
           </li>
           <li>
             ✅ <strong>Restart Container:</strong> Simply restarts the
             application without updating
           </li>
           <li>
-            ✅ <strong>No Git required:</strong> Works in Docker containers
-            without Git installed
-          </li>
-          <li>
-            ✅ <strong>Simple and reliable:</strong> Uses GET requests to avoid
-            parsing issues
+            ✅ <strong>Automatic Version Tracking:</strong> Keeps package.json
+            version in sync with releases
           </li>
         </ul>
       </div>
@@ -193,6 +295,89 @@ export const SimpleSystemUpdater = component$(() => {
           margin-bottom: 20px;
           font-style: italic;
         }
+
+        .version-info {
+          background: white;
+          border-radius: 6px;
+          padding: 15px;
+          margin-bottom: 15px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .version-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .version-label {
+          font-weight: 500;
+          color: var(--text-secondary, #666);
+        }
+
+        .version-value {
+          font-family: 'Courier New', monospace;
+          font-weight: 600;
+          color: var(--text-primary, #333);
+        }
+
+        .update-badge {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          text-align: center;
+          font-weight: 600;
+          font-size: 14px;
+          animation: pulse 2s infinite;
+        }
+
+        .uptodate-badge {
+          background: #10b981;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          text-align: center;
+          font-weight: 600;
+          font-size: 14px;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.02);
+            opacity: 0.9;
+          }
+        }
+
+        .release-notes {
+          background: white;
+          border-radius: 6px;
+          padding: 15px;
+          margin-bottom: 15px;
+          border-left: 4px solid #667eea;
+        }
+
+        .release-notes h4 {
+          margin: 0 0 10px 0;
+          font-size: 14px;
+          color: var(--text-primary, #333);
+        }
+
+        .release-notes pre {
+          margin: 0;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          font-family: 'Courier New', monospace;
+          font-size: 12px;
+          line-height: 1.5;
+          color: var(--text-secondary, #666);
+        }
         
         .update-actions {
           display: flex;
@@ -201,7 +386,7 @@ export const SimpleSystemUpdater = component$(() => {
           flex-wrap: wrap;
         }
         
-        .update-btn, .restart-btn {
+        .check-btn, .update-btn, .restart-btn {
           padding: 12px 24px;
           border: none;
           border-radius: 6px;
@@ -211,6 +396,15 @@ export const SimpleSystemUpdater = component$(() => {
           transition: all 0.2s;
           min-width: 160px;
         }
+
+        .check-btn {
+          background: #8b5cf6;
+          color: white;
+        }
+
+        .check-btn:hover:not(:disabled) {
+          background: #7c3aed;
+        }
         
         .update-btn {
           background: #2563eb;
@@ -219,6 +413,11 @@ export const SimpleSystemUpdater = component$(() => {
         
         .update-btn:hover:not(:disabled) {
           background: #1d4ed8;
+        }
+
+        .update-btn.disabled {
+          background: #9ca3af;
+          cursor: not-allowed;
         }
         
         .restart-btn {
@@ -230,7 +429,7 @@ export const SimpleSystemUpdater = component$(() => {
           background: #b91c1c;
         }
         
-        .update-btn:disabled, .restart-btn:disabled {
+        .check-btn:disabled, .update-btn:disabled, .restart-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
