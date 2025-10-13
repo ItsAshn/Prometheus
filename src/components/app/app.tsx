@@ -1,6 +1,6 @@
 import { component$, useStore, useVisibleTask$ } from "@builder.io/qwik";
 import { Auth } from "../auth/auth";
-import { VideoList } from "../video/video-list";
+import VideoList from "../video/VideoList";
 
 interface AppState {
   isAuthenticated: boolean;

@@ -8,6 +8,7 @@ import {
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { server$ } from "@builder.io/qwik-city";
+import VideoList from "~/components/video/VideoList";
 import styles from "./index.css?inline";
 
 interface SiteConfig {
@@ -198,70 +199,17 @@ export default component$(() => {
           )}
         </section>
 
-        <section class="features">
-          <div class="section-header">
-            <h3>Platform Features</h3>
-            <p>
-              Professional video hosting with complete control over your content
-            </p>
-          </div>
-
-          <div class="feature-grid">
-            <div class="feature-card">
-              <div class="feature-icon">🎬</div>
-              <h4>HLS Streaming</h4>
-              <p>
-                Automatic video conversion for adaptive quality streaming across
-                all devices
-              </p>
-              <a href="/videos" class="feature-link">
-                Browse Library →
-              </a>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">📤</div>
-              <h4>Easy Upload</h4>
-              <p>
-                Drag and drop video files up to 5GB. Supports multiple formats
-                including MP4, AVI, MOV
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🔐</div>
-              <h4>Secure Access</h4>
-              <p>
-                Protected admin area with JWT authentication and encrypted
-                session management
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🌐</div>
-              <h4>Universal Playback</h4>
-              <p>
-                Works on all modern browsers and devices with responsive design
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">⚡</div>
-              <h4>Fast & Clean</h4>
-              <p>
-                Lightweight interface focused on your content without ads or
-                distractions
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🐳</div>
-              <h4>Easy Deployment</h4>
-              <p>
-                Docker ready for simple setup and environment-based
-                configuration
-              </p>
-            </div>
+        <section class="latest-videos">
+          <div class="videos-section">
+            <h3>Latest Videos</h3>
+            <VideoList
+              count={4}
+              showTitles={true}
+              displayMode="compact"
+              enablePlayer={false}
+              showActions={false}
+              showMetadata={true}
+            />
           </div>
         </section>
       </main>

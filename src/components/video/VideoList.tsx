@@ -7,30 +7,87 @@ import {
 } from "@builder.io/qwik";
 import { VideoPlayer } from "./video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
-import styles from "./video-list.css?inline";
+import styles from "./videoList.css?inline";
 
-interface VideoListProps {
+export interface VideoListProps {
   isAdmin?: boolean;
+  count?: number; // Limit number of videos displayed
+  showTitles?: boolean; // Show video titles
+  displayMode?: "grid" | "list" | "compact"; // Display layout
+  enablePlayer?: boolean; // Enable embedded video player
+  showActions?: boolean; // Show video action buttons
+  showMetadata?: boolean; // Show video metadata (duration, size, etc.)
+  sortBy?: "newest" | "oldest" | "title" | "duration"; // Sort order
+  className?: string; // Custom CSS class
 }
 
-export const VideoList = component$<VideoListProps>((props) => {
+export default component$<VideoListProps>((props) => {
   useStylesScoped$(styles);
   const videos = useSignal<VideoMetadata[]>([]);
   const isLoading = useSignal(true);
   const error = useSignal("");
   const selectedVideo = useSignal<VideoMetadata | null>(null);
 
+  // Extract props to avoid serialization issues
+  const {
+    isAdmin = false,
+    count,
+    showTitles = true,
+    displayMode = "grid",
+    enablePlayer = true,
+    showActions = true,
+    showMetadata = true,
+    sortBy = "newest",
+    className = "",
+  } = props;
+
   const loadVideos = $(async () => {
     // Only run on client side to avoid SSR URL issues
-    if (typeof window === "undefined") return;
-
+    if (typeof window === "undefined") {
+      return;
+    }
     try {
       isLoading.value = true;
       const response = await fetch("/api/video/list");
       const result = await response.json();
 
       if (result.success) {
-        videos.value = result.videos;
+        let videoList = result.videos;
+
+        // Apply sorting
+        switch (sortBy) {
+          case "newest":
+            videoList.sort(
+              (a: VideoMetadata, b: VideoMetadata) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            );
+            break;
+          case "oldest":
+            videoList.sort(
+              (a: VideoMetadata, b: VideoMetadata) =>
+                new Date(a.createdAt).getTime() -
+                new Date(b.createdAt).getTime()
+            );
+            break;
+          case "title":
+            videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
+              a.title.localeCompare(b.title)
+            );
+            break;
+          case "duration":
+            videoList.sort(
+              (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
+            );
+            break;
+        }
+
+        // Apply count limit if specified
+        if (count && count > 0) {
+          videoList = videoList.slice(0, count);
+        }
+
+        videos.value = videoList;
         error.value = "";
       } else {
         error.value = "Failed to load videos";
@@ -44,7 +101,7 @@ export const VideoList = component$<VideoListProps>((props) => {
   });
 
   const deleteVideo = $(async (videoId: string) => {
-    if (!props.isAdmin) return;
+    if (!isAdmin) return;
     if (typeof window === "undefined") return;
 
     if (!confirm("Are you sure you want to delete this video?")) return;
@@ -73,6 +130,17 @@ export const VideoList = component$<VideoListProps>((props) => {
     } catch (error) {
       console.error("Error deleting video:", error);
       alert("Failed to delete video");
+    }
+  });
+
+  const handleVideoSelect = $((video: VideoMetadata) => {
+    if (enablePlayer) {
+      selectedVideo.value = video;
+    } else {
+      // If player is disabled, navigate to individual video page
+      if (typeof window !== "undefined") {
+        window.location.href = `/video/${video.id}`;
+      }
     }
   });
 
@@ -135,11 +203,11 @@ export const VideoList = component$<VideoListProps>((props) => {
 
   if (videos.value.length === 0) {
     return (
-      <div class="no-videos">
+      <div class={`no-videos ${className}`}>
         <div class="empty-icon">🎬</div>
         <h3>No Videos Available</h3>
         <p>
-          {props.isAdmin
+          {isAdmin
             ? "Upload your first video to get started!"
             : "No videos have been uploaded yet."}
         </p>
@@ -148,8 +216,8 @@ export const VideoList = component$<VideoListProps>((props) => {
   }
 
   return (
-    <div class="video-list-container">
-      {selectedVideo.value ? (
+    <div class={`video-list-container ${className}`}>
+      {selectedVideo.value && enablePlayer ? (
         <div class="video-player-section">
           <div class="player-header">
             <button
@@ -165,50 +233,56 @@ export const VideoList = component$<VideoListProps>((props) => {
           />
         </div>
       ) : (
-        <div class="video-grid">
+        <div class={`video-${displayMode}`}>
           {videos.value.map((video) => (
             <div key={video.id} class="video-card">
               <div class="video-thumbnail">
                 <div
                   class="play-icon"
-                  onClick$={() => (selectedVideo.value = video)}
+                  onClick$={() => handleVideoSelect(video)}
                 >
                   ▶️
                 </div>
-                <div class="video-duration">
-                  {formatDuration(video.duration)}
-                </div>
+                {showMetadata && (
+                  <div class="video-duration">
+                    {formatDuration(video.duration)}
+                  </div>
+                )}
               </div>
 
               <div class="video-info">
-                <h4 class="video-title">{video.title}</h4>
-                <div class="video-meta">
-                  <span class="video-resolution">{video.resolution}</span>
-                  <span class="video-size">
-                    {formatFileSize(video.fileSize)}
-                  </span>
-                  <span class="video-date">
-                    {new Date(video.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              <div class="video-actions">
-                <button
-                  onClick$={() => (selectedVideo.value = video)}
-                  class="btn btn-primary btn-sm flex-1"
-                >
-                  Play
-                </button>
-                {props.isAdmin && (
-                  <button
-                    onClick$={() => deleteVideo(video.id)}
-                    class="btn btn-destructive btn-sm"
-                  >
-                    Delete
-                  </button>
+                {showTitles && <h4 class="video-title">{video.title}</h4>}
+                {showMetadata && (
+                  <div class="video-meta">
+                    <span class="video-resolution">{video.resolution}</span>
+                    <span class="video-size">
+                      {formatFileSize(video.fileSize)}
+                    </span>
+                    <span class="video-date">
+                      {new Date(video.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 )}
               </div>
+
+              {showActions && (
+                <div class="video-actions">
+                  <button
+                    onClick$={() => handleVideoSelect(video)}
+                    class="btn btn-primary btn-sm flex-1"
+                  >
+                    {enablePlayer ? "Play" : "View"}
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick$={() => deleteVideo(video.id)}
+                      class="btn btn-destructive btn-sm"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

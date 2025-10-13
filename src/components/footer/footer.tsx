@@ -1,8 +1,26 @@
-import { component$, useStylesScoped$ } from "@builder.io/qwik";
+import {
+  component$,
+  useStylesScoped$,
+  useResource$,
+  Resource,
+} from "@builder.io/qwik";
 import styles from "./footer.css?inline";
 
 export const Footer = component$(() => {
   useStylesScoped$(styles);
+
+  const versionResource = useResource$<{ version: string }>(async () => {
+    try {
+      const response = await fetch("/api/version");
+      if (!response.ok) {
+        return { version: "v1.0.0" };
+      }
+      const data = await response.json();
+      return { version: data.version || "v1.0.0" };
+    } catch {
+      return { version: "v1.0.0" };
+    }
+  });
   return (
     <footer class="footer">
       <div class="footer-container">
@@ -85,7 +103,14 @@ export const Footer = component$(() => {
               © {new Date().getFullYear()} Prometheus. All rights reserved.
             </p>
             <div class="footer-social">
-              <span class="footer-version">v1.0.0</span>
+              <Resource
+                value={versionResource}
+                onPending={() => <span class="footer-version">Loading...</span>}
+                onRejected={() => <span class="footer-version">v1.0.0</span>}
+                onResolved={(data) => (
+                  <span class="footer-version">{data.version}</span>
+                )}
+              />
             </div>
           </div>
         </div>

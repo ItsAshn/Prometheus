@@ -1,7 +1,7 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { VideoUpload } from "~/components/video/video-upload";
-import { VideoList } from "~/components/video/video-list";
+import { VideoList } from "~/components/video/VideoList";
 import { ProcessingStatus } from "~/components/video/processing-status";
 
 export default component$(() => {
