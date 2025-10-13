@@ -125,8 +125,6 @@
 
 * {
   box-sizing: border-box;
-  color: var(--color-text);
-  background: var(--color-background);
 }
 
 body {
