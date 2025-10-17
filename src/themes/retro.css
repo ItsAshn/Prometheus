@@ -1,0 +1,360 @@
+/* Import retro pixel font */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
+:root {
+  /* Color palette - Retro gaming colors */
+  --retro-purple: #2a0845;
+  --retro-pink: #ff006e;
+  --retro-blue: #3a86ff;
+  --retro-cyan: #00f5ff;
+  --retro-yellow: #ffbe0b;
+  --retro-orange: #fb5607;
+  --retro-green: #06ffa5;
+
+  /* Semantic color tokens - Light theme - RETRO STYLE */
+  --color-background: #f8f4ff;
+  --color-foreground: #2a0845;
+  --color-card: #ffffff;
+  --color-card-foreground: #2a0845;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2a0845;
+  --color-primary: #ff006e;
+  --color-primary-hover: #d90060;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #ffbe0b;
+  --color-secondary-foreground: #2a0845;
+  --color-muted: #e6e0f0;
+  --color-muted-foreground: #5a4570;
+  --color-accent: #3a86ff;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ff006e;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #2a0845;
+  --color-input: #ffffff;
+  --color-ring: #ff006e;
+  --color-text: #2a0845;
+  --color-text-inverted: #ffffff;
+
+  /* Semantic color shortcuts */
+  --success: #06ffa5;
+  --success-foreground: #2a0845;
+  --warning: #ffbe0b;
+  --warning-foreground: #2a0845;
+  --info: #3a86ff;
+  --info-foreground: #ffffff;
+
+  /* Design tokens - SHARP PIXELATED STYLE */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-full: 0;
+
+  /* Spacing scale */
+  --spacing-0: 0;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+
+  /* Typography scale */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+
+  /* Font weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Shadows - HARD PIXELATED SHADOWS */
+  --shadow-sm: 2px 2px 0 rgba(42, 8, 69, 0.3);
+  --shadow: 4px 4px 0 rgba(42, 8, 69, 0.4);
+  --shadow-md: 6px 6px 0 rgba(42, 8, 69, 0.5);
+  --shadow-lg: 8px 8px 0 rgba(42, 8, 69, 0.6);
+  --shadow-xl: 12px 12px 0 rgba(42, 8, 69, 0.7);
+
+  /* Transitions - Snappier for retro feel */
+  --transition-fast: all 0.15s ease;
+  --transition-normal: all 0.2s ease;
+  --transition-slow: all 0.3s ease;
+}
+
+[data-theme="dark"] {
+  /* Dark theme semantic colors - RETRO DARK */
+  --color-background: #2a0845;
+  --color-foreground: #ffffff;
+  --color-card: #3d1266;
+  --color-card-foreground: #ffffff;
+  --color-popover: #3d1266;
+  --color-popover-foreground: #ffffff;
+  --color-primary: #ff006e;
+  --color-primary-hover: #ff3385;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #ffbe0b;
+  --color-secondary-foreground: #2a0845;
+  --color-muted: #4a1d70;
+  --color-muted-foreground: #d4b3f0;
+  --color-accent: #00f5ff;
+  --color-accent-foreground: #2a0845;
+  --color-destructive: #ff006e;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #ff006e;
+  --color-input: #3d1266;
+  --color-ring: #00f5ff;
+  --color-text: #ffffff;
+  --color-text-inverted: #2a0845;
+
+  /* Shadows in dark mode - Still pixelated */
+  --shadow-sm: 2px 2px 0 rgba(255, 0, 110, 0.3);
+  --shadow: 4px 4px 0 rgba(255, 0, 110, 0.4);
+  --shadow-md: 6px 6px 0 rgba(255, 0, 110, 0.5);
+  --shadow-lg: 8px 8px 0 rgba(255, 0, 110, 0.6);
+  --shadow-xl: 12px 12px 0 rgba(255, 0, 110, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family:
+    "Press Start 2P",
+    "Courier New",
+    monospace,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  padding: 0;
+  transition: var(--transition-fast);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* ===== APP LAYOUT ===== */
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+}
+
+/* ===== HEADER ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--color-background);
+  border-bottom: 4px solid var(--color-border);
+  box-shadow: var(--shadow);
+}
+
+.header-container {
+  max-width: 1920px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  gap: var(--spacing-8);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  text-decoration: none;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xl);
+  transition: var(--transition-fast);
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--color-secondary);
+}
+
+.logo:hover {
+  color: var(--color-accent);
+  text-shadow: 3px 3px 0 var(--color-primary);
+  transform: translate(-2px, -2px);
+}
+
+.logo-icon {
+  font-size: 1.75rem;
+}
+
+.logo-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex: 1;
+  justify-content: center;
+}
+
+.nav-link {
+  padding: var(--spacing-2) var(--spacing-4);
+  text-decoration: none;
+  color: var(--color-foreground);
+  font-weight: var(--font-weight-bold);
+  border: 3px solid transparent;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.05em;
+}
+
+.nav-link:hover {
+  color: var(--color-primary);
+  background: var(--color-muted);
+  border: 3px solid var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-2px, -2px);
+}
+
+.nav-link.admin-link {
+  color: var(--color-primary);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.user-name {
+  color: var(--color-muted-foreground);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.btn-login,
+.btn-logout {
+  padding: var(--spacing-3) var(--spacing-5);
+  border: 4px solid var(--color-border);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.btn-login {
+  background: var(--color-accent);
+  color: var(--color-primary-foreground);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-login:hover {
+  background: var(--color-primary);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
+}
+
+.btn-logout {
+  background: var(--color-destructive);
+  color: var(--color-destructive-foreground);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-logout:hover {
+  background: var(--color-secondary);
+  color: var(--color-foreground);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow);
+}
+
+/* ===== RESPONSIVE HEADER ===== */
+@media (max-width: 1024px) {
+  .header-container {
+    padding: 0 var(--spacing-4);
+  }
+
+  .logo-text {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    height: 56px;
+    gap: var(--spacing-4);
+  }
+
+  .header-nav {
+    display: none;
+  }
+
+  .logo-text {
+    display: none;
+  }
+
+  .user-name {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    padding: 0 var(--spacing-3);
+  }
+}

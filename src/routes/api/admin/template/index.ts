@@ -9,8 +9,14 @@ const GLOBAL_CSS_PATH = join(process.cwd(), "src", "global.css");
 const BACKUP_CSS_PATH = join(process.cwd(), "temp", "global.css.backup");
 
 // Template file paths
-const RETRO_TEMPLATE_PATH = join(process.cwd(), "src", "global.css.original");
+const RETRO_TEMPLATE_PATH = join(process.cwd(), "src", "themes", "retro.css");
 const MODERN_TEMPLATE_PATH = join(process.cwd(), "src", "themes", "modern.css");
+const CYBERPUNK_TEMPLATE_PATH = join(
+  process.cwd(),
+  "src",
+  "themes",
+  "cyberpunk.css"
+);
 
 function verifyAdminToken(request: Request): boolean {
   try {
@@ -58,13 +64,15 @@ function getTemplateContent(templateName: string): string | null {
 
     switch (templateName) {
       case "retro":
-        // Use the original global.css if available, otherwise use current
-        templatePath = existsSync(RETRO_TEMPLATE_PATH)
-          ? RETRO_TEMPLATE_PATH
-          : GLOBAL_CSS_PATH;
+        // Try retro.css first, fall back to original backup
+        templatePath = RETRO_TEMPLATE_PATH;
+
         break;
       case "modern":
         templatePath = MODERN_TEMPLATE_PATH;
+        break;
+      case "cyberpunk":
+        templatePath = CYBERPUNK_TEMPLATE_PATH;
         break;
       default:
         return null;
@@ -145,7 +153,7 @@ export const onGet: RequestHandler = async ({ json, request }) => {
         description:
           "Pixelated retro gaming aesthetic with bold colors and sharp edges",
         available:
-          existsSync(RETRO_TEMPLATE_PATH) || existsSync(GLOBAL_CSS_PATH),
+          existsSync(RETRO_TEMPLATE_PATH) || existsSync(RETRO_BACKUP_PATH),
       },
       {
         name: "modern",
@@ -153,6 +161,13 @@ export const onGet: RequestHandler = async ({ json, request }) => {
         description:
           "Sleek minimalist design with rounded corners and subtle shadows",
         available: existsSync(MODERN_TEMPLATE_PATH),
+      },
+      {
+        name: "cyberpunk",
+        displayName: "Cyberpunk Theme",
+        description:
+          "Futuristic neon-lit aesthetic with glowing effects and dark backgrounds",
+        available: existsSync(CYBERPUNK_TEMPLATE_PATH),
       },
     ];
 

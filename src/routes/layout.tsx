@@ -6,12 +6,12 @@ import {
   useTask$,
   useStylesScoped$,
 } from "@builder.io/qwik";
-import { server$ } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import {
   checkAdminAuthServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
+import { loadSiteConfigServer } from "~/lib/data-loaders";
 import styles from "./layout.css?inline";
 
 interface SiteConfig {
@@ -34,33 +34,19 @@ export default component$(() => {
     isLoadingConfig: true,
   });
 
-  // Server function to load site configuration
-  const loadSiteConfig = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/site-config`);
-      if (response.ok) {
-        const config = await response.json();
-        return { success: true, config };
-      }
-      return { success: false, config: null };
-    } catch {
-      return { success: false, config: null };
-    }
-  });
-
   // Check authentication status and load site config on component load
   useTask$(async () => {
-    const [authStatus, configResult] = await Promise.all([
+    const [authStatus, config] = await Promise.all([
       checkAdminAuthServer(),
-      loadSiteConfig(),
+      loadSiteConfigServer(),
     ]);
 
     authStore.isAuthenticated = authStatus.isAuthenticated;
     authStore.username = authStatus.user?.username || "";
     authStore.isLoading = false;
 
-    if (configResult.success) {
-      siteStore.config = configResult.config;
+    if (config) {
+      siteStore.config = config;
     }
     siteStore.isLoadingConfig = false;
   });

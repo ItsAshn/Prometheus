@@ -5,6 +5,7 @@ import {
   $,
   useStylesScoped$,
 } from "@builder.io/qwik";
+import { loadVideosServer } from "~/lib/data-loaders";
 import { VideoPlayer } from "./video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
 import styles from "./videoList.css?inline";
@@ -42,17 +43,12 @@ export default component$<VideoListProps>((props) => {
   } = props;
 
   const loadVideos = $(async () => {
-    // Only run on client side to avoid SSR URL issues
-    if (typeof window === "undefined") {
-      return;
-    }
     try {
       isLoading.value = true;
-      const response = await fetch("/api/video/list");
-      const result = await response.json();
+      const result = await loadVideosServer();
 
-      if (result.success) {
-        let videoList = result.videos;
+      if (result) {
+        let videoList = result;
 
         // Apply sorting
         switch (sortBy) {
