@@ -1,5 +1,10 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import {
+  getThemeConfig,
+  applyThemeTemplate,
+  applyCustomCSS,
+} from "~/lib/theme-utils";
 import "./site-config-manager.css";
 
 interface SiteConfig {
@@ -95,69 +100,22 @@ export const SiteConfigManager = component$(() => {
     }
   });
 
-  // Server function to apply custom CSS
-  const applyCss = server$(async function (cssContent: string) {
-    try {
-      const response = await fetch(`${this.url.origin}/api/admin/css`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-        body: JSON.stringify({ cssContent }),
-      });
-
-      if (response.ok) {
-        return { success: true };
-      }
-
-      const error = await response.json();
-      return { success: false, error: error.message || "Failed to apply CSS" };
-    } catch (error) {
-      console.error("Error applying CSS:", error);
-      return { success: false, error: "Network error" };
-    }
-  });
-
-  // Server function to apply template
-  const applyTemplate = server$(async function (templateName: string) {
-    try {
-      const response = await fetch(`${this.url.origin}/api/admin/template`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-        body: JSON.stringify({ templateName }),
-      });
-
-      if (response.ok) {
-        return { success: true };
-      }
-
-      const error = await response.json();
-      return {
-        success: false,
-        error: error.message || "Failed to apply template",
-      };
-    } catch (error) {
-      console.error("Error applying template:", error);
-      return { success: false, error: "Network error" };
-    }
-  });
-
   // Load configuration on component mount
   useTask$(async () => {
-    const result = await loadSiteConfig();
-    if (result.success && result.config) {
-      store.config = result.config;
-      channelName.value = result.config.channelName;
-      channelDescription.value = result.config.channelDescription;
-      aboutText.value = result.config.aboutText || "";
-      customCss.value = result.config.customCss || "";
-      selectedTemplate.value = result.config.selectedTemplate || "modern";
+    const [configResult, themeConfig] = await Promise.all([
+      loadSiteConfig(),
+      getThemeConfig(),
+    ]);
+
+    if (configResult.success && configResult.config) {
+      store.config = configResult.config;
+      channelName.value = configResult.config.channelName;
+      channelDescription.value = configResult.config.channelDescription;
+      aboutText.value = configResult.config.aboutText || "";
+      customCss.value = themeConfig.customCss || "";
+      selectedTemplate.value = themeConfig.selectedTemplate || "modern";
     } else {
-      store.error = result.error || "Failed to load configuration";
+      store.error = configResult.error || "Failed to load configuration";
     }
     store.isLoading = false;
   });
@@ -203,13 +161,11 @@ export const SiteConfigManager = component$(() => {
     store.isSaving = true;
 
     try {
-      const result = await applyCss(customCss.value);
+      const result = await applyCustomCSS(customCss.value);
 
       if (result.success) {
         store.successMessage =
-          "CSS applied successfully! Changes will be visible on page refresh.";
-        // Also save the CSS in the config
-        await handleSaveConfig();
+          "CSS applied successfully! Please refresh the page to see changes.";
       } else {
         store.error = result.error || "Failed to apply CSS";
       }
@@ -227,12 +183,11 @@ export const SiteConfigManager = component$(() => {
     store.isSaving = true;
 
     try {
-      const result = await applyTemplate(templateName);
+      const result = await applyThemeTemplate(templateName);
 
       if (result.success) {
-        store.successMessage = `${templateName.charAt(0).toUpperCase() + templateName.slice(1)} theme applied successfully! Changes will be visible on page refresh.`;
-        // Save the template selection in config
-        await handleSaveConfig();
+        store.successMessage = `${templateName.charAt(0).toUpperCase() + templateName.slice(1)} theme applied successfully! Please refresh the page to see changes.`;
+        customCss.value = ""; // Clear custom CSS when applying a template
       } else {
         store.error = result.error || "Failed to apply template";
       }

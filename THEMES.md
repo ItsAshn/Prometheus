@@ -25,6 +25,8 @@ Prometheus includes a powerful theme system that allows you to customize the app
 4. **Apply Theme**: Click "Apply" on your preferred theme
 5. **Refresh**: Reload the page to see changes
 
+> **Note**: Themes are stored in your configuration file and work in both development and production environments. The theme CSS is dynamically loaded on every page request for instant updates.
+
 ---
 
 ## Pre-built Themes

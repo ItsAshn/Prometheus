@@ -43,7 +43,7 @@ Already had optimized server$ functions:
 
 ## APIs That Were Removed ✅
 
-### Successfully Removed (6 endpoints):
+### Successfully Removed (9 endpoints):
 
 1. ✅ **`/api/auth/check`** - Replaced by `checkAdminAuthServer()` from `admin-auth-utils.ts`
 2. ✅ **`/api/auth/verify`** - Replaced by `checkAdminAuthServer()` from `admin-auth-utils.ts`
@@ -51,32 +51,35 @@ Already had optimized server$ functions:
 4. ✅ **`/api/version`** - Replaced by `loadVersionServer()` from `data-loaders.ts`
 5. ✅ **`/api/video/list`** - Replaced by `loadVideosServer()` from `data-loaders.ts`
 6. ✅ **`/api/video/processing-status`** - Replaced by `loadProcessingStatusServer()` from `data-loaders.ts`
+7. ✅ **`/api/admin/template`** - Replaced by `applyThemeTemplate()` from `theme-utils.ts`
+8. ✅ **`/api/admin/css`** - Replaced by `applyCustomCSS()` from `theme-utils.ts`
+9. ✅ **`/api/styles/global.css`** - Replaced by dynamic CSS injection in layout via routeLoader$
 
-### Remaining APIs (13 endpoints - Required for External/Special Use):
+### Remaining APIs (11 endpoints - Required for External/Special Use):
 
 #### Auth APIs (1):
 
 1. **`/api/auth/login`** - Login endpoint (POST)
 
-#### Admin APIs (5):
+#### Admin APIs (3):
 
 2. **`/api/admin/site-config`** - Admin config updates (POST)
-3. **`/api/admin/css`** - Custom CSS management
-4. **`/api/admin/template`** - Theme template management
-5. **`/api/admin/ffmpeg-status`** - FFmpeg diagnostics
-6. **`/api/admin/system-update`** - System update functionality
+3. **`/api/admin/ffmpeg-status`** - FFmpeg diagnostics
+4. **`/api/admin/system-update`** - System update functionality
+
+> **Note**: Theme APIs (`/api/admin/css` and `/api/admin/template`) have been removed and replaced with server$ functions for better production compatibility.
 
 #### Video APIs (7):
 
-7. **`/api/video/upload`** - Video upload endpoint
-8. **`/api/video/upload-chunk`** - Chunked video upload
-9. **`/api/video/assemble`** - Video assembly after chunked upload
-10. **`/api/video/delete`** - Video deletion
-11. **`/api/video/analyze`** - Video analysis
-12. **`/api/video/reprocess`** - Video reprocessing
-13. **`/api/video/stream/[...path]`** - Video streaming endpoint
+5. **`/api/video/upload`** - Video upload endpoint
+6. **`/api/video/upload-chunk`** - Chunked video upload
+7. **`/api/video/assemble`** - Video assembly after chunked upload
+8. **`/api/video/delete`** - Video deletion
+9. **`/api/video/analyze`** - Video analysis
+10. **`/api/video/reprocess`** - Video reprocessing
+11. **`/api/video/stream/[...path]`** - Video streaming endpoint
 
-**Reduction**: 19 endpoints → 13 endpoints (31.6% reduction)
+**Reduction**: 19 endpoints → 11 endpoints (42.1% reduction)
 
 ## Benefits
 
@@ -85,7 +88,8 @@ Already had optimized server$ functions:
 - **Reduced Network Overhead**: Server$ functions execute server-side without HTTP round trips for SSR
 - **Better Code Reusability**: Centralized data loading logic in utility files
 - **Type Safety**: Direct TypeScript function calls maintain type safety
-- **Fewer API Endpoints**: Reduced from 19 to 13 endpoints (~32% reduction)
+- **Fewer API Endpoints**: Reduced from 19 to 11 endpoints (~42% reduction)
+- **Production Compatible**: Themes now work correctly in production builds
 
 ### Developer Experience:
 
@@ -153,5 +157,8 @@ The following API files have been successfully removed:
 - ✅ `src/routes/api/version/` - Entire directory deleted
 - ✅ `src/routes/api/video/list/` - Entire directory deleted
 - ✅ `src/routes/api/video/processing-status/` - Entire directory deleted
+- ✅ `src/routes/api/admin/template/` - Entire directory deleted (replaced with server$ functions)
+- ✅ `src/routes/api/admin/css/` - Entire directory deleted (replaced with server$ functions)
+- ✅ `src/routes/api/styles/` - Entire directory deleted (theme CSS now injected dynamically)
 
 All functionality has been migrated to server$ functions in utility files.

@@ -5,13 +5,16 @@ import {
   useStore,
   useTask$,
   useStylesScoped$,
+  useVisibleTask$,
 } from "@builder.io/qwik";
+import { routeLoader$ } from "@builder.io/qwik-city";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import {
   checkAdminAuthServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
 import { loadSiteConfigServer } from "~/lib/data-loaders";
+import { getCurrentThemeCSS } from "~/lib/theme-utils";
 import styles from "./layout.css?inline";
 
 interface SiteConfig {
@@ -20,7 +23,14 @@ interface SiteConfig {
   lastUpdated: string;
 }
 
+// Load theme CSS dynamically on every request
+export const useThemeLoader = routeLoader$(async () => {
+  const themeCSS = await getCurrentThemeCSS();
+  return { themeCSS };
+});
+
 export default component$(() => {
+  const theme = useThemeLoader();
   useStylesScoped$(styles);
 
   const authStore = useStore({
@@ -32,6 +42,25 @@ export default component$(() => {
   const siteStore = useStore({
     config: null as SiteConfig | null,
     isLoadingConfig: true,
+  });
+
+  // Inject theme CSS into document head
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ cleanup }) => {
+    const styleId = "dynamic-theme-css";
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement;
+
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+
+    styleEl.textContent = theme.value.themeCSS;
+
+    cleanup(() => {
+      styleEl?.remove();
+    });
   });
 
   // Check authentication status and load site config on component load
