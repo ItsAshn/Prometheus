@@ -7,7 +7,8 @@ import {
   useSignal,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { server$ } from "@builder.io/qwik-city";
+import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
+import { loadSiteConfigServer, loadVideosServer } from "~/lib/data-loaders";
 import VideoList from "~/components/video/VideoList";
 import { ChannelHeader } from "~/components/channel/channel-header";
 import styles from "./index.css?inline";
@@ -33,90 +34,33 @@ export default component$(() => {
 
   const videoCount = useSignal(0);
 
-  // Server function to check admin auth status
-  const checkAdminAuth = server$(async function () {
-    try {
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
-
-      if (verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        return {
-          isAuthenticated: true,
-          username: data.user.username,
-        };
-      }
-
-      return {
-        isAuthenticated: false,
-        username: "",
-      };
-    } catch {
-      return {
-        isAuthenticated: false,
-        username: "",
-      };
-    }
-  });
-
-  // Server function to load site configuration
-  const loadSiteConfig = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/site-config`);
-      if (response.ok) {
-        const config = await response.json();
-        return { success: true, config };
-      }
-      return { success: false, config: null };
-    } catch {
-      return { success: false, config: null };
-    }
-  });
-
-  // Server function to get video count
-  const getVideoCount = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/video/list`);
-      if (response.ok) {
-        const result = await response.json();
-        return result.success ? result.videos.length : 0;
-      }
-      return 0;
-    } catch {
-      return 0;
-    }
-  });
-
   // Check authentication status and load site config on component load
   useTask$(async () => {
-    const [authStatus, configResult, count] = await Promise.all([
-      checkAdminAuth(),
-      loadSiteConfig(),
-      getVideoCount(),
+    const [authStatus, config, videos] = await Promise.all([
+      checkAdminAuthServer(),
+      loadSiteConfigServer(),
+      loadVideosServer(),
     ]);
 
     authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.username;
+    authStore.username = authStatus.user?.username || "";
     authStore.isLoading = false;
 
-    if (configResult.success) {
-      siteStore.config = configResult.config;
+    if (config) {
+      siteStore.config = config;
     }
     siteStore.isLoadingConfig = false;
 
-    videoCount.value = count;
+    videoCount.value = videos?.length || 0;
   });
 
   // Also check when page becomes visible (after redirect)
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(() => {
     const recheckAuth = async () => {
-      const status = await checkAdminAuth();
+      const status = await checkAdminAuthServer();
       authStore.isAuthenticated = status.isAuthenticated;
-      authStore.username = status.username;
+      authStore.username = status.user?.username || "";
       authStore.isLoading = false;
     };
     recheckAuth();

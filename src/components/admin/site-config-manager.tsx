@@ -32,7 +32,7 @@ export const SiteConfigManager = component$(() => {
   const channelDescription = useSignal("");
   const aboutText = useSignal("");
   const customCss = useSignal("");
-  const selectedTemplate = useSignal("retro");
+  const selectedTemplate = useSignal("modern");
 
   // Server function to load site configuration
   const loadSiteConfig = server$(async function () {
@@ -64,11 +64,13 @@ export const SiteConfigManager = component$(() => {
     selectedTemplate: string;
   }) {
     try {
+      const cookieHeader = this.request.headers.get("cookie") || "";
+
       const response = await fetch(`${this.url.origin}/api/admin/site-config`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Cookie: this.request.headers.get("cookie") || "",
+          Cookie: cookieHeader,
         },
         body: JSON.stringify(config),
       });
@@ -78,14 +80,18 @@ export const SiteConfigManager = component$(() => {
         return { success: true, config: result.config };
       }
 
-      const error = await response.json();
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: "Unknown error" }));
       return {
         success: false,
-        error: error.message || "Failed to save configuration",
+        error: errorData.message || "Failed to save configuration",
       };
     } catch (error) {
       console.error("Error saving site config:", error);
-      return { success: false, error: "Network error" };
+      const errorMessage =
+        error instanceof Error ? error.message : "Network error";
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -149,7 +155,7 @@ export const SiteConfigManager = component$(() => {
       channelDescription.value = result.config.channelDescription;
       aboutText.value = result.config.aboutText || "";
       customCss.value = result.config.customCss || "";
-      selectedTemplate.value = result.config.selectedTemplate || "retro";
+      selectedTemplate.value = result.config.selectedTemplate || "modern";
     } else {
       store.error = result.error || "Failed to load configuration";
     }
@@ -390,6 +396,31 @@ export const SiteConfigManager = component$(() => {
                 disabled={store.isSaving}
               >
                 {selectedTemplate.value === "modern" ? "Active" : "Apply"}
+              </button>
+            </div>
+
+            <div
+              class={`template-option ${selectedTemplate.value === "cyberpunk" ? "selected" : ""}`}
+            >
+              <div class="template-preview cyberpunk-preview">
+                <div class="preview-header"></div>
+                <div class="preview-content">
+                  <div class="preview-card"></div>
+                  <div class="preview-card"></div>
+                </div>
+              </div>
+              <h4>Cyberpunk Theme</h4>
+              <p>
+                Futuristic neon-lit aesthetic with glowing effects and dark
+                backgrounds.
+              </p>
+              <button
+                type="button"
+                onClick$={() => handleTemplateChange("cyberpunk")}
+                class={`template-btn ${selectedTemplate.value === "cyberpunk" ? "active" : ""}`}
+                disabled={store.isSaving}
+              >
+                {selectedTemplate.value === "cyberpunk" ? "Active" : "Apply"}
               </button>
             </div>
           </div>

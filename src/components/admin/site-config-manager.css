@@ -607,6 +607,52 @@ textarea.form-input {
   border-color: #334155;
 }
 
+/* Cyberpunk Theme Preview */
+.cyberpunk-preview {
+  background: #0a0e27;
+  position: relative;
+  overflow: hidden;
+}
+
+.cyberpunk-preview::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(
+      circle at 20% 50%,
+      rgba(255, 0, 110, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      rgba(0, 245, 255, 0.15) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+}
+
+.cyberpunk-preview .preview-header {
+  background: linear-gradient(135deg, #ff006e, #00f5ff);
+  border-bottom: 2px solid #00f5ff;
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+.cyberpunk-preview .preview-card {
+  background: #1a1f3a;
+  border: 2px solid #ff006e;
+  box-shadow:
+    0 0 10px rgba(255, 0, 110, 0.4),
+    0 0 20px rgba(0, 245, 255, 0.2);
+  position: relative;
+  z-index: 1;
+}
+
 /* Template Button */
 .template-btn {
   width: 100%;

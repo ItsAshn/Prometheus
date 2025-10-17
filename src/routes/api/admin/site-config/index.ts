@@ -23,7 +23,7 @@ const DEFAULT_CONFIG: SiteConfig = {
   aboutText:
     "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
   customCss: "",
-  selectedTemplate: "retro",
+  selectedTemplate: "modern",
   lastUpdated: new Date().toISOString(),
 };
 
@@ -48,10 +48,12 @@ function saveSiteConfig(config: SiteConfig): void {
     }
 
     config.lastUpdated = new Date().toISOString();
-    writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2));
+    writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2), "utf-8");
   } catch (error) {
     console.error("Error saving site config:", error);
-    throw error;
+    throw new Error(
+      `Failed to save site config: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -99,13 +101,18 @@ export const onGet: RequestHandler = async ({ json, request }) => {
 };
 
 export const onPost: RequestHandler = async ({ json, request }) => {
+  console.log("[Site Config] POST request received");
+
   if (!verifyAdminToken(request)) {
+    console.log("[Site Config] Unauthorized access attempt");
     json(401, { message: "Unauthorized" });
     return;
   }
 
   try {
     const body = await request.json();
+    console.log("[Site Config] Request body:", body);
+
     const {
       channelName,
       channelDescription,
@@ -115,6 +122,7 @@ export const onPost: RequestHandler = async ({ json, request }) => {
     } = body;
 
     if (!channelName || !channelDescription) {
+      console.log("[Site Config] Missing required fields");
       json(400, { message: "Channel name and description are required" });
       return;
     }
@@ -124,21 +132,22 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       channelDescription: channelDescription.trim(),
       aboutText: aboutText ? aboutText.trim() : "",
       customCss: customCss || "",
-      selectedTemplate: selectedTemplate || "retro",
+      selectedTemplate: selectedTemplate || "modern",
       lastUpdated: new Date().toISOString(),
     };
 
+    console.log("[Site Config] Saving config:", config);
     saveSiteConfig(config);
+    console.log("[Site Config] Config saved successfully");
 
     json(200, {
       message: "Site configuration updated successfully",
       config,
     });
   } catch (error) {
-    console.error("Error updating site config:", error);
-    if (error instanceof Response) {
-      throw error;
-    }
-    json(500, { message: "Internal server error" });
+    console.error("[Site Config] Error updating site config:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Internal server error";
+    json(500, { message: errorMessage });
   }
 };

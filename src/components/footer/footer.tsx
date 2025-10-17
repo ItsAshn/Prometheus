@@ -4,6 +4,7 @@ import {
   useResource$,
   Resource,
 } from "@builder.io/qwik";
+import { loadVersionServer } from "~/lib/data-loaders";
 import styles from "./footer.css?inline";
 
 export const Footer = component$(() => {
@@ -11,12 +12,8 @@ export const Footer = component$(() => {
 
   const versionResource = useResource$<{ version: string }>(async () => {
     try {
-      const response = await fetch("/api/version");
-      if (!response.ok) {
-        return { version: "v1.0.0" };
-      }
-      const data = await response.json();
-      return { version: data.version || "v1.0.0" };
+      const data = await loadVersionServer();
+      return { version: data?.version || "v1.0.0" };
     } catch {
       return { version: "v1.0.0" };
     }

@@ -1,4 +1,5 @@
 import { component$, useSignal, $, useStylesScoped$ } from "@builder.io/qwik";
+import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
 import styles from "./video-upload.css?inline";
 
 export const VideoUpload = component$(() => {
@@ -68,12 +69,9 @@ export const VideoUpload = component$(() => {
 
     // Check authentication before starting upload
     try {
-      const authCheck = await fetch("/api/auth/check", {
-        method: "GET",
-        credentials: "include",
-      });
+      const authCheck = await checkAdminAuthServer();
 
-      if (!authCheck.ok) {
+      if (!authCheck.isAuthenticated) {
         message.value = "Please log in to upload videos";
         messageType.value = "error";
         setTimeout(() => {

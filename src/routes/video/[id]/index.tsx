@@ -8,19 +8,18 @@ import type { DocumentHead } from "@builder.io/qwik-city";
 import { routeLoader$ } from "@builder.io/qwik-city";
 import { VideoPlayer } from "~/components/video/video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
+import { VideoProcessor } from "~/lib/video/video-processor";
 import styles from "./index.css?inline";
 
-export const useVideoData = routeLoader$(async ({ params, status, url }) => {
+export const useVideoData = routeLoader$(async ({ params, status }) => {
   try {
     const videoId = params.id;
 
-    // Fetch video metadata from the API using the current request URL origin
-    const apiUrl = `${url.origin}/api/video/list`;
-    const response = await fetch(apiUrl);
-    const result = await response.json();
+    // Load video metadata directly using VideoProcessor
+    const videos = await VideoProcessor.getVideoMetadata();
 
-    if (result.success && result.videos) {
-      const video = result.videos.find((v: VideoMetadata) => v.id === videoId);
+    if (videos && videos.length > 0) {
+      const video = videos.find((v: VideoMetadata) => v.id === videoId);
       if (video) {
         return video;
       }

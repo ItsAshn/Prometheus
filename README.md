@@ -27,7 +27,7 @@ A self-hosted video platform that gives you complete control over your content. 
 | 🐳 **Docker Ready**  | One-command deployment                  |
 | 🔐 **Secure**        | JWT authentication + encrypted cookies  |
 | 📱 **Universal**     | Works on all devices and browsers       |
-| 🎨 **Customizable**  | Make it truly yours                     |
+| 🎨 **Themeable**     | 3 built-in themes + custom CSS support  |
 
 ## 🚀 Quick Start
 
@@ -76,7 +76,20 @@ JWT_SECRET=your-random-secret
 
 1. Go to `/admin` → Login with your credentials
 2. Navigate to "Manage Videos" → Upload content
-3. Share `/videos` with your audience
+3. Customize your look in "Site Configuration"
+4. Share `/videos` with your audience
+
+### 🎨 Themes & Customization
+
+Prometheus includes **3 beautiful pre-built themes** and supports **custom CSS**:
+
+- **Retro Theme** - Bold, pixelated gaming aesthetic (default)
+- **Modern Theme** - Sleek, minimalist design with smooth gradients
+- **Cyberpunk Theme** - Futuristic neon-lit style with glowing effects
+
+**Custom CSS**: Add your own styles through the admin panel to create a unique look.
+
+📚 **Full Guide**: See [THEMES.md](THEMES.md) for complete customization documentation
 
 ### Supported Formats
 
@@ -99,7 +112,7 @@ JWT_SECRET=your-random-secret
 ## 🛠️ Development Roadmap
 
 - 📊 Analytics Dashboard
-- 🎨 Custom Themes
+- ✅ ~~Custom Themes~~ (3 themes + custom CSS)
 - 💬 Comment System
 - 📱 Mobile Apps
 - 🔴 Live Streaming

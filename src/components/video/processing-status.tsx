@@ -1,4 +1,5 @@
 import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
+import { loadProcessingStatusServer } from "~/lib/data-loaders";
 import "./processing-status.css";
 
 interface ProcessingStatus {
@@ -20,11 +21,8 @@ export const ProcessingStatus = component$(() => {
     const fetchProcessingStatus = async () => {
       try {
         isLoading.value = true;
-        const response = await fetch("/api/video/processing-status");
-        if (response.ok) {
-          const data = await response.json();
-          processingVideos.value = data.processingVideos || [];
-        }
+        const data = await loadProcessingStatusServer();
+        processingVideos.value = data || [];
       } catch (error) {
         console.error("Error fetching processing status:", error);
       } finally {

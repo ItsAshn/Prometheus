@@ -1,5 +1,9 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import {
+  checkAdminAuthServer,
+  logoutAdminServer,
+} from "~/lib/admin-auth-utils";
 
 interface AuthStore {
   isAuthenticated: boolean;
@@ -32,16 +36,18 @@ export const SecureAuth = component$(() => {
       const statusResponse = await fetch(`${this.url.origin}/api/auth/status`);
       const statusData = await statusResponse.json();
 
-      const verifyResponse = await fetch(`${this.url.origin}/api/auth/verify`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
+      const authResult = await checkAdminAuthServer();
 
       return {
         isInitialized: statusData.isInitialized,
-        isAuthenticated: verifyResponse.ok,
-        user: verifyResponse.ok ? (await verifyResponse.json()).user : null,
+        isAuthenticated: authResult.isAuthenticated,
+        user: authResult.user
+          ? {
+              id: authResult.user.username,
+              username: authResult.user.username,
+              createdAt: new Date().toISOString(),
+            }
+          : null,
       };
     } catch {
       return {
@@ -91,18 +97,6 @@ export const SecureAuth = component$(() => {
       return { success: response.ok, data };
     } catch {
       return { success: false, data: { message: "Network error" } };
-    }
-  });
-
-  // Server function for logout
-  const logoutUser = server$(async function () {
-    try {
-      const response = await fetch(`${this.url.origin}/api/auth/verify`, {
-        method: "POST",
-      });
-      return response.ok;
-    } catch {
-      return false;
     }
   });
 
@@ -184,7 +178,7 @@ export const SecureAuth = component$(() => {
 
   const handleLogout = $(async () => {
     try {
-      await logoutUser();
+      await logoutAdminServer();
       authStore.isAuthenticated = false;
       authStore.user = null;
       username.value = "";
