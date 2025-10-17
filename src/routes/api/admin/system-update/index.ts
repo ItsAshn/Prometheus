@@ -118,8 +118,10 @@ function getCurrentVersion(): string {
 
 // Helper function to get GitHub repository info
 function getGitHubInfo() {
-  const owner = process.env.GITHUB_OWNER || "ItsAshn";
-  const repo = process.env.GITHUB_REPO || "Prometheus";
+  // Hardcoded official repository - all installations pull updates from here
+  // Users don't need to set these in their .env file
+  const owner = "ItsAshn";
+  const repo = "Prometheus";
   return { owner, repo };
 }
 

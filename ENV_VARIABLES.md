@@ -31,18 +31,7 @@ NODE_ENV=production
 - Values: `development` | `production`
 - Controls app behavior and optimizations
 
-## Update System Variables (NEW!)
-
-### GitHub Repository
-
-```bash
-GITHUB_OWNER=ItsAshn
-GITHUB_REPO=Prometheus
-```
-
-- **Required for update functionality**
-- Specifies which GitHub repo to check for releases
-- Must match your actual GitHub repository
+## Update System Variables
 
 ### Docker Container
 
@@ -50,10 +39,19 @@ GITHUB_REPO=Prometheus
 CONTAINER_NAME=prometheus
 ```
 
-- **Required for auto-restart after updates**
-- Name of your Docker container
-- Used by the update system to restart the container
+- **Optional** - Name of your Docker container
+- Used by the update system to restart the container after updates
 - Default: `prometheus`
+- Only needed if your container has a different name
+
+### GitHub Repository (Hardcoded)
+
+The update system automatically pulls from the official repository:
+
+- **Owner:** `ItsAshn`
+- **Repo:** `Prometheus`
+
+**No environment variables needed!** All installations pull updates from the same source repository, regardless of where they're hosted.
 
 ## Complete Example (.env.production)
 
@@ -65,11 +63,7 @@ ADMIN_PASSWORD=SuperSecurePassword123!
 # JWT Secret (generate a random string)
 JWT_SECRET=a8f2c9e7b4d1f6a3e8c2b5d9f7a4e1c6b3d8f5a2e9c7b4d1f6a3e8c2b5d9f7a4
 
-# GitHub Configuration for Update System
-GITHUB_OWNER=ItsAshn
-GITHUB_REPO=Prometheus
-
-# Docker Container Configuration
+# Docker Container Configuration (optional)
 CONTAINER_NAME=prometheus
 
 # Application Settings
@@ -86,11 +80,7 @@ ADMIN_PASSWORD=test
 # JWT Secret
 JWT_SECRET=dev-secret-key-not-for-production
 
-# GitHub Configuration for Update System
-GITHUB_OWNER=ItsAshn
-GITHUB_REPO=Prometheus
-
-# Docker Container Configuration
+# Docker Container Configuration (optional)
 CONTAINER_NAME=prometheus
 
 # Environment
@@ -143,28 +133,30 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Update System Usage
 
-The update system uses these variables to:
+The update system uses these variables and settings:
 
-1. **GITHUB_OWNER & GITHUB_REPO**
-   - Check for new releases
-   - Download updates
-   - Compare versions
+1. **GitHub Repository (Hardcoded)**
+   - Automatically checks: `ItsAshn/Prometheus`
+   - No configuration needed
+   - All users get updates from official source
 
 2. **CONTAINER_NAME**
    - Restart container after updates
    - Execute: `docker restart prometheus`
+   - Optional: defaults to "prometheus"
 
 3. **JWT_SECRET**
    - Verify admin authentication
    - Protect update endpoints
+   - Required for security
 
 ## Troubleshooting
 
 ### "Failed to check for updates"
 
-- ✅ Check `GITHUB_OWNER` and `GITHUB_REPO` are correct
-- ✅ Ensure repository is public or token is provided
-- ✅ Verify internet connectivity
+- ✅ Verify internet connectivity to GitHub
+- ✅ Check that ItsAshn/Prometheus repository is accessible
+- ✅ Ensure GitHub API is not rate-limited
 
 ### "Failed to restart container"
 
@@ -178,19 +170,20 @@ The update system uses these variables to:
 - ✅ Verify `JWT_SECRET` is configured
 - ✅ Clear browser cookies and try again
 
-## Migration from Old Setup
+## Update System Behavior
 
-If you previously had:
+The update system is **hardcoded** to check the official repository:
 
-```bash
-APP_VERSION=v1.0.0  # ❌ No longer needed!
-```
+- **Repository:** `https://github.com/ItsAshn/Prometheus`
+- **Why?** All users get updates from the same official source
+- **Result:** No configuration needed - just works!
 
-**Remove it!** Version is now automatically detected from:
+This means:
 
-- Git tags (if available)
-- Git commit count and hash
-- package.json as fallback
+- ✅ Users don't need GitHub credentials
+- ✅ No environment variables for repo info
+- ✅ Everyone gets the same updates
+- ✅ Simplified setup
 
 ## Docker Compose Example
 
@@ -212,18 +205,19 @@ services:
 
 On startup, the application will:
 
-- ✅ Use defaults if GitHub variables are missing
+- ✅ Use hardcoded GitHub repo (ItsAshn/Prometheus)
+- ✅ Use default container name if not specified
 - ⚠️ Log warnings for missing optional variables
 - ❌ Fail if critical variables (JWT_SECRET) are missing
 
 Default values:
 
 ```javascript
-GITHUB_OWNER = "ItsAshn";
-GITHUB_REPO = "Prometheus";
 CONTAINER_NAME = "prometheus";
 JWT_SECRET = "your-super-secret-jwt-key"; // ⚠️ Change this!
 ```
+
+**Update source is hardcoded:** All installations pull from `ItsAshn/Prometheus`
 
 ## Quick Setup Checklist
 
@@ -232,9 +226,9 @@ For new deployment:
 - [ ] Copy `.env.production` to `.env`
 - [ ] Set `ADMIN_USERNAME` and `ADMIN_PASSWORD`
 - [ ] Generate and set secure `JWT_SECRET`
-- [ ] Set `GITHUB_OWNER` (default: ItsAshn)
-- [ ] Set `GITHUB_REPO` (default: Prometheus)
-- [ ] Set `CONTAINER_NAME` (default: prometheus)
+- [ ] Set `CONTAINER_NAME` (optional, defaults to "prometheus")
 - [ ] Set `NODE_ENV=production`
 - [ ] Test admin login
 - [ ] Test update check functionality
+
+**No GitHub configuration needed!** Updates automatically pull from the official ItsAshn/Prometheus repository.
