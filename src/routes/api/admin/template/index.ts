@@ -152,8 +152,7 @@ export const onGet: RequestHandler = async ({ json, request }) => {
         displayName: "Retro Theme",
         description:
           "Pixelated retro gaming aesthetic with bold colors and sharp edges",
-        available:
-          existsSync(RETRO_TEMPLATE_PATH) || existsSync(RETRO_BACKUP_PATH),
+        available: existsSync(RETRO_TEMPLATE_PATH),
       },
       {
         name: "modern",
