@@ -31,21 +31,36 @@ A self-hosted video platform that gives you complete control over your content. 
 
 ## 🚀 Quick Start
 
-> 📖 **For complete deployment instructions with easy updates, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+> 📖 **For complete deployment instructions with easy updates, see [DEPLOYMENT.md](DEPLOYMENT.md)**  
+> 🎯 **First-time admin? See [ADMIN_SETUP_GUIDE.md](ADMIN_SETUP_GUIDE.md) for the easiest setup!**
 
-### Docker (Recommended)
+### Docker (Recommended) - Zero Configuration! ⭐
+
+The absolute easiest way - just run:
 
 ```bash
 git clone https://github.com/ItsAshn/Prometheus.git
 cd Prometheus/qwik-app
-cp example.env .env
-# Edit .env with your credentials
 docker-compose up -d
 ```
 
-**→ Access at:** http://localhost:3000
+**That's it!** JWT secrets auto-generate on build. Default login: `admin` / `changeme123`
 
+**→ Access at:** http://localhost:3000  
 **🔄 Updates:** Use the built-in admin panel to update from GitHub releases - no Git required!
+
+### With Custom Configuration
+
+```bash
+git clone https://github.com/ItsAshn/Prometheus.git
+cd Prometheus/qwik-app
+
+# Interactive setup (asks for username/password, auto-generates JWT)
+npm run setup
+
+# Build and run
+docker-compose up -d
+```
 
 ### Manual Setup
 
@@ -53,6 +68,14 @@ docker-compose up -d
 git clone https://github.com/ItsAshn/Prometheus.git
 cd Prometheus/qwik-app
 pnpm install
+
+# Option 1: Interactive setup (easiest)
+pnpm setup
+
+# Option 2: Zero config - just run!
+pnpm dev  # JWT auto-generates on startup
+
+# Option 3: Manual .env configuration
 cp example.env .env
 # Edit .env with your credentials
 pnpm dev
@@ -60,15 +83,26 @@ pnpm dev
 
 **→ Access at:** http://localhost:5173
 
-### Configuration
+### Configuration Made Easy
+
+**No configuration needed!** JWT secrets auto-generate during build and startup.
+
+**Want custom credentials?** Run the interactive setup:
+
+```bash
+npm run setup
+```
+
+**Manual configuration:** Edit `.env` file
 
 ```env
 ADMIN_USERNAME=your-username
 ADMIN_PASSWORD=your-secure-password
-JWT_SECRET=your-random-secret
+JWT_SECRET=auto-generated-during-build  # Automatically handled!
 ```
 
-> **⚠️ Security:** Use strong, unique passwords in production!
+> **⚠️ Security:** Use strong, unique passwords in production!  
+> **💡 How it works:** JWT secrets auto-generate before every build/dev/serve command!
 
 ## 📖 Usage
 

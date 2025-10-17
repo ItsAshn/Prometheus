@@ -17,6 +17,11 @@ import render from "./entry.ssr";
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { ensureJWTSecret, validateEnvironment } from "./lib/env-utils";
+
+// Ensure JWT secret exists and validate environment on startup
+ensureJWTSecret();
+validateEnvironment();
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
