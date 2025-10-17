@@ -2,10 +2,11 @@ import { component$, useSignal, $, useVisibleTask$ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
 
 // Check for updates
-const checkForUpdates = server$(async function () {
+const checkForUpdates = server$(async function (includePrereleases = false) {
   try {
+    const prereleaseParam = includePrereleases ? "&prerelease=true" : "";
     const response = await fetch(
-      `${this.url.origin}/api/admin/system-update?action=check`,
+      `${this.url.origin}/api/admin/system-update?action=check${prereleaseParam}`,
       {
         method: "GET",
         headers: {
@@ -27,10 +28,13 @@ const checkForUpdates = server$(async function () {
 });
 
 // Simple GET-based update functions
-const performSimpleUpdate = server$(async function () {
+const performSimpleUpdate = server$(async function (
+  includePrereleases = false
+) {
   try {
+    const prereleaseParam = includePrereleases ? "&prerelease=true" : "";
     const response = await fetch(
-      `${this.url.origin}/api/admin/system-update?action=update`,
+      `${this.url.origin}/api/admin/system-update?action=update${prereleaseParam}`,
       {
         method: "GET",
         headers: {
@@ -84,23 +88,20 @@ export const SimpleSystemUpdater = component$(() => {
   const latestVersion = useSignal("");
   const updateAvailable = useSignal(false);
   const releaseNotes = useSignal("");
-
-  // Check for updates on component mount
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(async () => {
-    await handleCheckUpdates();
-  });
+  const isPrerelease = useSignal(false);
+  const includePrereleases = useSignal(false);
 
   const handleCheckUpdates = $(async () => {
     isCheckingUpdates.value = true;
     try {
-      const result = await checkForUpdates();
+      const result = await checkForUpdates(includePrereleases.value);
 
       if (result.success) {
         currentVersion.value = result.currentVersion || "Unknown";
         latestVersion.value = result.latestVersion || "Unknown";
         updateAvailable.value = result.updateAvailable || false;
         releaseNotes.value = result.releaseNotes || "";
+        isPrerelease.value = result.isPrerelease || false;
       }
     } catch (error) {
       console.error("Failed to check for updates:", error);
@@ -109,13 +110,19 @@ export const SimpleSystemUpdater = component$(() => {
     }
   });
 
+  // Check for updates on component mount
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    await handleCheckUpdates();
+  });
+
   const handleUpdate = $(async () => {
     isUpdating.value = true;
     updateMessage.value = "";
     updateStatus.value = "idle";
 
     try {
-      const result = await performSimpleUpdate();
+      const result = await performSimpleUpdate(includePrereleases.value);
 
       if (result.success) {
         updateStatus.value = "success";
@@ -188,6 +195,11 @@ export const SimpleSystemUpdater = component$(() => {
             {isCheckingUpdates.value
               ? "Checking..."
               : currentVersion.value || "Unknown"}
+            {!isCheckingUpdates.value &&
+              currentVersion.value &&
+              currentVersion.value.includes("-dev") && (
+                <span class="dev-tag">DEV</span>
+              )}
           </span>
         </div>
         <div class="version-item">
@@ -196,6 +208,9 @@ export const SimpleSystemUpdater = component$(() => {
             {isCheckingUpdates.value
               ? "Checking..."
               : latestVersion.value || "Unknown"}
+            {isPrerelease.value && !isCheckingUpdates.value && (
+              <span class="prerelease-tag">PRE-RELEASE</span>
+            )}
           </span>
         </div>
         {updateAvailable.value && (
@@ -207,6 +222,43 @@ export const SimpleSystemUpdater = component$(() => {
             <div class="uptodate-badge">✅ Up to date</div>
           )}
       </div>
+
+      {/* Pre-release checkbox */}
+      <div class="prerelease-option">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            checked={includePrereleases.value}
+            onChange$={(e) => {
+              includePrereleases.value = (e.target as HTMLInputElement).checked;
+            }}
+            disabled={isCheckingUpdates.value || isUpdating.value}
+          />
+          <span>Include pre-release versions</span>
+        </label>
+        <p class="prerelease-info">
+          ℹ️ Pre-release versions may contain experimental features and bugs
+        </p>
+      </div>
+
+      {/* Development Version Info */}
+      {!isCheckingUpdates.value &&
+        currentVersion.value &&
+        currentVersion.value.includes("-dev") && (
+          <div class="dev-info">
+            <h4>🔧 Development Version Detected</h4>
+            <p>
+              You're running a development version (
+              <code>{currentVersion.value}</code>). This version includes{" "}
+              {currentVersion.value.match(/\d+(?=\+)/)?.[0] || "unreleased"}{" "}
+              commits beyond the last tagged release.
+            </p>
+            <p class="dev-tip">
+              💡 <strong>Tip:</strong> Create a GitHub release with a version
+              tag (e.g., v1.0.0) to establish an official release version.
+            </p>
+          </div>
+        )}
 
       {/* Release Notes */}
       {releaseNotes.value && updateAvailable.value && (
@@ -321,6 +373,29 @@ export const SimpleSystemUpdater = component$(() => {
           font-family: 'Courier New', monospace;
           font-weight: 600;
           color: var(--text-primary, #333);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .prerelease-tag {
+          background: #f59e0b;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+
+        .dev-tag {
+          background: #6366f1;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
         }
 
         .update-badge {
@@ -377,6 +452,77 @@ export const SimpleSystemUpdater = component$(() => {
           font-size: 12px;
           line-height: 1.5;
           color: var(--text-secondary, #666);
+        }
+
+        .prerelease-option {
+          background: white;
+          border-radius: 6px;
+          padding: 15px;
+          margin-bottom: 15px;
+        }
+
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          font-weight: 500;
+          color: var(--text-primary, #333);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+          cursor: pointer;
+          width: 18px;
+          height: 18px;
+        }
+
+        .checkbox-label input[type="checkbox"]:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
+        }
+
+        .prerelease-info {
+          margin: 8px 0 0 26px;
+          font-size: 12px;
+          color: var(--text-secondary, #666);
+          font-style: italic;
+        }
+
+        .dev-info {
+          background: #eff6ff;
+          border-left: 4px solid #6366f1;
+          border-radius: 6px;
+          padding: 15px;
+          margin-bottom: 15px;
+        }
+
+        .dev-info h4 {
+          margin: 0 0 10px 0;
+          font-size: 14px;
+          color: #6366f1;
+        }
+
+        .dev-info p {
+          margin: 8px 0;
+          font-size: 13px;
+          color: var(--text-secondary, #666);
+          line-height: 1.5;
+        }
+
+        .dev-info code {
+          background: #dbeafe;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 12px;
+          color: #1e40af;
+        }
+
+        .dev-tip {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid #bfdbfe;
+          font-size: 12px;
         }
         
         .update-actions {
