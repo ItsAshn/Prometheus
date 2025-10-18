@@ -118,6 +118,28 @@ app.use(
   })
 );
 
+// Serve video thumbnails with proper MIME types
+app.use(
+  "/videos/thumbnails",
+  express.static(join(publicDir, "videos", "thumbnails"), {
+    maxAge: "7d", // 7 day cache for thumbnails
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Set proper MIME type based on file extension
+      if (path.endsWith(".webp")) {
+        res.setHeader("Content-Type", "image/webp");
+      } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+        res.setHeader("Content-Type", "image/jpeg");
+      } else if (path.endsWith(".png")) {
+        res.setHeader("Content-Type", "image/png");
+      }
+    },
+  })
+);
+
 app.use(express.static(distDir, { redirect: false }));
 
 // Use Qwik City's page and endpoint request handler
