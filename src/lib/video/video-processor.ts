@@ -64,6 +64,7 @@ export interface VideoMetadata {
   fileSize: number;
   createdAt: string;
   hlsPath: string;
+  thumbnail?: string;
   status?: "processing" | "completed" | "failed";
   processingProgress?: number;
 }
@@ -79,6 +80,7 @@ export interface ProcessingStatus {
 export class VideoProcessor {
   private static videosDir = path.join(process.cwd(), "public", "videos");
   private static hlsDir = path.join(process.cwd(), "public", "videos", "hls");
+  private static thumbnailsDir = path.join(process.cwd(), "public", "videos", "thumbnails");
   private static processingStatusFile = path.join(
     process.cwd(),
     "temp",
@@ -121,13 +123,75 @@ export class VideoProcessor {
   static async ensureDirectories() {
     await fs.mkdir(this.videosDir, { recursive: true });
     await fs.mkdir(this.hlsDir, { recursive: true });
+    await fs.mkdir(this.thumbnailsDir, { recursive: true });
     await fs.mkdir(path.join(process.cwd(), "temp"), { recursive: true });
+  }
+
+  static async generateThumbnail(
+    inputPath: string,
+    videoId: string
+  ): Promise<string> {
+    await this.ensureDirectories();
+
+    if (!ffmpegReady) {
+      console.log("FFmpeg not ready for thumbnail generation, attempting setup...");
+      try {
+        await setupFFmpegPath();
+        ffmpegReady = true;
+      } catch (error) {
+        console.error("FFmpeg setup failed for thumbnail generation:", error);
+        throw new Error(`FFmpeg not available: ${error}`);
+      }
+    }
+
+    const thumbnailPath = path.join(this.thumbnailsDir, `${videoId}.jpg`);
+
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .screenshots({
+          timestamps: ['10%'], // Capture at 10% of video duration
+          filename: `${videoId}.jpg`,
+          folder: this.thumbnailsDir,
+          size: '1280x720'
+        })
+        .on('end', () => {
+          console.log(`Thumbnail generated: ${thumbnailPath}`);
+          resolve(`/videos/thumbnails/${videoId}.jpg`);
+        })
+        .on('error', (error) => {
+          console.error('Thumbnail generation error:', error);
+          reject(error);
+        });
+    });
+  }
+
+  static async saveThumbnail(
+    thumbnailFile: File,
+    videoId: string
+  ): Promise<string> {
+    await this.ensureDirectories();
+
+    const fileExtension = thumbnailFile.name.toLowerCase().split('.').pop();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+      throw new Error('Invalid thumbnail format. Use JPG, PNG, or WebP');
+    }
+
+    const thumbnailPath = path.join(this.thumbnailsDir, `${videoId}.${fileExtension}`);
+    const arrayBuffer = await thumbnailFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    await fs.writeFile(thumbnailPath, buffer);
+    
+    return `/videos/thumbnails/${videoId}.${fileExtension}`;
   }
 
   static async processVideoToHLS(
     inputPath: string,
     videoId: string,
-    title: string
+    title: string,
+    customThumbnail?: string
   ): Promise<VideoMetadata> {
     await this.ensureDirectories();
 
@@ -148,6 +212,19 @@ export class VideoProcessor {
     // Initialize processing status
     await this.updateProcessingStatus(videoId, "processing", 0, title);
 
+    // Generate or use custom thumbnail
+    let thumbnailPath = customThumbnail;
+    if (!thumbnailPath) {
+      try {
+        console.log("Generating thumbnail from video...");
+        thumbnailPath = await this.generateThumbnail(inputPath, videoId);
+        console.log("Thumbnail generated successfully:", thumbnailPath);
+      } catch (error) {
+        console.warn("Failed to generate thumbnail, continuing without:", error);
+        thumbnailPath = undefined;
+      }
+    }
+
     const outputDir = path.join(this.hlsDir, videoId);
     await fs.mkdir(outputDir, { recursive: true });
 
@@ -167,33 +244,34 @@ export class VideoProcessor {
           "-probesize 100M", // Probe more of the file for format detection
         ])
         .outputOptions([
-          // Video encoding settings
+          // Video encoding settings - optimized for web delivery
           "-c:v libx264",
-          "-preset medium", // Better compression than 'fast'
-          "-crf 25", // Slightly higher CRF for smaller files (was 23)
-          "-profile:v main", // Use main profile instead of baseline for better quality
-          "-level 4.0", // Higher level for better compatibility
-          "-pix_fmt yuv420p", // Ensure compatible pixel format
-          "-maxrate 5000k", // Limit bitrate to 5Mbps for smaller segments
-          "-bufsize 10000k", // Buffer size for rate control
+          "-preset faster", // Faster encoding, good compression
+          "-crf 23", // Good quality/size balance (lower = better quality)
+          "-profile:v main", // Main profile for better compatibility
+          "-level 4.0", // Level 4.0 for HD compatibility
+          "-pix_fmt yuv420p", // Compatible pixel format
+          "-maxrate 3000k", // Limit bitrate to 3Mbps for efficient streaming
+          "-bufsize 6000k", // Buffer size for rate control
           
           // Audio encoding settings
           "-c:a aac",
-          "-ac 2", // Force stereo audio
-          "-ar 48000", // Use 48kHz sample rate (more standard for video)
-          "-b:a 128k", // Set audio bitrate
-          "-profile:a aac_low", // Use AAC-LC profile for better compatibility
+          "-ac 2", // Stereo audio
+          "-ar 48000", // 48kHz sample rate
+          "-b:a 128k", // Audio bitrate
+          "-profile:a aac_low", // AAC-LC profile
           
-          // HLS-specific settings
+          // HLS-specific settings - optimized for fast loading
           "-f hls",
-          "-hls_time 4", // 4-second segments for better streaming and smaller file sizes
+          "-hls_time 2", // 2-second segments for faster initial playback and better seeking
           "-hls_list_size 0", // Keep all segments in playlist
           "-hls_segment_filename", segmentPattern,
           
-          // Key frame and GOP settings for better HLS compatibility
-          "-g 60", // Set GOP size to 60 frames (2 seconds at 30fps)
+          // Key frame and GOP settings - aligned with segment size
+          "-g 60", // GOP size: 60 frames = 2 seconds at 30fps (matches hls_time)
           "-keyint_min 60", // Minimum keyframe interval
-          "-sc_threshold 0", // Disable scene change detection to ensure regular keyframes
+          "-sc_threshold 0", // Disable scene change detection for regular keyframes
+          "-force_key_frames expr:gte(t,n_forced*2)", // Force keyframe every 2 seconds
           
           // Timing and synchronization improvements
           "-avoid_negative_ts make_zero", // Fix negative timestamps
@@ -251,17 +329,29 @@ export class VideoProcessor {
             title
           );
         })
-        .on("codecData", (data) => {
+        .on("codecData", (data: any) => {
+          console.log("Codec data received:", JSON.stringify(data, null, 2));
+          
           duration = this.parseFFmpegDuration(data.duration);
-          // Extract resolution from video details if available
-          if (data.video && typeof data.video === "string") {
-            const resMatch = data.video.match(/(\d+)x(\d+)/);
+          
+          // Extract resolution from video_details string which contains dimensions
+          if (data.video_details && typeof data.video_details === "string") {
+            const resMatch = data.video_details.match(/(\d{3,4})x(\d{3,4})/);
+            resolution = resMatch
+              ? `${resMatch[1]}x${resMatch[2]}`
+              : "1920x1080";
+          } else if (data.video && typeof data.video === "string") {
+            // Fallback to video field
+            const resMatch = data.video.match(/(\d{3,4})x(\d{3,4})/);
             resolution = resMatch
               ? `${resMatch[1]}x${resMatch[2]}`
               : "1920x1080";
           } else {
-            resolution = "1920x1080"; // default resolution
+            // Default resolution if no data available
+            resolution = "1920x1080";
           }
+          
+          console.log(`Extracted resolution: ${resolution}`);
         })
         .on("end", async () => {
           try {
@@ -314,6 +404,7 @@ export class VideoProcessor {
               fileSize,
               createdAt: new Date().toISOString(),
               hlsPath: `/videos/hls/${videoId}/playlist.m3u8`,
+              thumbnail: thumbnailPath,
               status: "completed",
               processingProgress: 100,
             };

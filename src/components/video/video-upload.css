@@ -416,3 +416,19 @@
   background: var(--color-muted);
   border-color: var(--color-border);
 }
+
+/* Thumbnail preview styles */
+.thumbnail-preview {
+  margin-top: var(--spacing-3);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-width: 320px;
+}
+
+.thumbnail-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}

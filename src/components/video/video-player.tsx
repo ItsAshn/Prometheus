@@ -3,6 +3,7 @@ import {
   useSignal,
   useStylesScoped$,
   useVisibleTask$,
+  $,
 } from "@builder.io/qwik";
 import styles from "./video-player.css?inline";
 
@@ -15,26 +16,84 @@ interface VideoPlayerProps {
 export const VideoPlayer = component$<VideoPlayerProps>((props) => {
   useStylesScoped$(styles);
   const videoRef = useSignal<HTMLVideoElement>();
+  const containerRef = useSignal<HTMLDivElement>();
   const isLoading = useSignal(true);
+  const isVisible = useSignal(false);
   const error = useSignal("");
+  const aspectRatio = useSignal<string>("16 / 9"); // Default aspect ratio
 
+  // Update aspect ratio when video metadata is loaded
+  const handleLoadedMetadata$ = $(() => {
+    const video = videoRef.value;
+    console.log("handleLoadedMetadata called", video);
+    if (video && video.videoWidth && video.videoHeight) {
+      const ratio = video.videoWidth / video.videoHeight;
+      const newAspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+      aspectRatio.value = newAspectRatio;
+      console.log(
+        `✅ Video dimensions: ${video.videoWidth}x${video.videoHeight}, ratio: ${ratio.toFixed(2)}, aspect ratio set to: ${newAspectRatio}`
+      );
+    } else {
+      console.warn("Video metadata not available yet", {
+        videoWidth: video?.videoWidth,
+        videoHeight: video?.videoHeight,
+      });
+    }
+    isLoading.value = false;
+  });
+
+  // Intersection Observer for lazy loading
+  // Only load video when it's near the viewport
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track, cleanup }) => {
+    track(() => containerRef.value);
+
+    const container = containerRef.value;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !isVisible.value) {
+            isVisible.value = true;
+            // Once visible, disconnect observer to save resources
+            observer.disconnect();
+          }
+        });
+      },
+      {
+        rootMargin: "100px", // Start loading 100px before visible
+        threshold: 0.1, // Trigger when 10% visible
+      }
+    );
+
+    observer.observe(container);
+
+    cleanup(() => {
+      observer.disconnect();
+    });
+  });
+
+  // Load HLS only when visible
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track }) => {
     track(() => props.hlsUrl);
+    track(() => isVisible.value);
 
     const video = videoRef.value;
-    if (!video || !props.hlsUrl) return;
+    if (!video || !props.hlsUrl || !isVisible.value) return;
 
     const loadHLS = async () => {
       try {
-        // Convert the hlsUrl to use our streaming API
-        const streamingUrl = `/api/video/stream${props.hlsUrl}`;
+        // Use direct static file URLs for better caching and performance
+        // No API overhead - files served directly by Express with aggressive caching
+        const streamingUrl = props.hlsUrl;
 
         // Check if HLS is natively supported
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = streamingUrl;
           video.addEventListener("loadedmetadata", () => {
-            isLoading.value = false;
+            handleLoadedMetadata$();
           });
           video.addEventListener("error", (e) => {
             console.error("Native video error:", e);
@@ -51,49 +110,38 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
 
           if (Hls.isSupported()) {
             const hls = new Hls({
-              debug: false, // Disable debug in production
-              enableWorker: false,
+              debug: false,
+              enableWorker: true, // Use web worker for better performance
               lowLatencyMode: false,
 
-              // Buffer management settings - optimized for large segments
-              backBufferLength: 90, // Larger back buffer for stability
-              maxBufferLength: 120, // Much larger forward buffer for big segments
-              maxMaxBufferLength: 300, // Higher maximum buffer length for large segments
+              // Buffer management - optimized for 2-second segments
+              backBufferLength: 60, // Keep 60 seconds of back buffer
+              maxBufferLength: 30, // 30 seconds forward buffer (15 segments)
+              maxMaxBufferLength: 60, // Max 60 seconds buffer
+              maxBufferSize: 60 * 1000 * 1000, // 60MB max buffer size
+              maxBufferHole: 0.5, // Allow 0.5s gaps
 
-              // Gap handling settings - more tolerant for large segments
-              nudgeOffset: 0.5, // Larger nudge for gaps in large segments
-              nudgeMaxRetry: 5, // More retries for nudging
-              maxFragLookUpTolerance: 1.0, // Higher tolerance for fragment lookup
+              // Loading optimizations for smaller segments
+              maxLoadingDelay: 4, // Quick loading for small segments
+              fragLoadingTimeOut: 20000, // 20s timeout
+              fragLoadingMaxRetry: 6, // Retry attempts
+              fragLoadingRetryDelay: 1000, // 1s retry delay
 
-              // Loading settings - significantly adjusted for large segments
-              maxLoadingDelay: 15, // Much higher loading delay for large segments
-              maxBufferHole: 2.0, // Allow much larger buffer holes
-              highBufferWatchdogPeriod: 8, // Much longer watchdog period
+              // Manifest loading
+              manifestLoadingTimeOut: 10000,
+              levelLoadingTimeOut: 10000,
 
-              // Fragment retry settings - dramatically increased for large segments
-              fragLoadingTimeOut: 120000, // 2 minute timeout for very large segments
-              fragLoadingMaxRetry: 10, // Many more retries for large segments
-              fragLoadingRetryDelay: 3000, // Longer retry delay
+              // Progressive loading
+              progressive: true,
+              startFragPrefetch: true, // Prefetch next segment
 
-              // Manifest and level loading timeouts
-              manifestLoadingTimeOut: 30000, // 30 second manifest timeout
-              levelLoadingTimeOut: 30000, // 30 second level loading timeout
+              // ABR (Adaptive Bitrate) - conservative for stability
+              abrEwmaDefaultEstimate: 500000, // Start at 500kbps
+              abrBandWidthFactor: 0.95, // Use 95% of estimated bandwidth
 
-              // Playback settings - optimized for large segments
-              startFragPrefetch: false, // Don't prefetch for large segments
-              testBandwidth: false, // Disable bandwidth testing
-              progressive: true, // Enable progressive loading
-
-              // ABR (Adaptive Bitrate) settings - more conservative for large segments
-              abrEwmaFastLive: 5.0, // Slower adaptation for stability
-              abrEwmaSlowLive: 15.0, // Much slower for large segments
-              abrEwmaFastVoD: 5.0, // Slower adaptation for VoD
-              abrEwmaSlowVoD: 15.0, // Much slower for large segments
-
-              // Additional large segment optimizations
-              maxStarvationDelay: 8, // Higher starvation delay
-              liveSyncDurationCount: 5, // More segments for live sync
-              liveMaxLatencyDurationCount: 10, // Higher latency tolerance
+              // Startup optimizations
+              startLevel: -1, // Auto-select starting quality
+              autoStartLoad: true,
             });
 
             hls.loadSource(streamingUrl);
@@ -106,95 +154,29 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               }
             });
 
-            let networkRetryCount = 0;
-            const maxNetworkRetries = 3;
+            hls.on(Hls.Events.LEVEL_LOADED, () => {
+              // Update aspect ratio when HLS metadata is available
+              handleLoadedMetadata$();
+            });
 
             hls.on(Hls.Events.ERROR, (event: any, data: any) => {
-              console.error("HLS error details:", {
-                type: data.type,
-                details: data.details,
-                fatal: data.fatal,
-                url: data.url,
-                response: data.response,
-                networkDetails: data.networkDetails,
-              });
+              if (!data.fatal) return;
 
-              // Handle timeout errors specifically - these are common with large segments
-              if (data.details === "fragLoadTimeOut") {
-                if (!data.fatal) {
-                  return;
-                }
-                // For fatal timeouts, try to recover
-                hls.startLoad();
-                return;
-              }
+              console.error("HLS error:", data.type, data.details);
 
-              // Handle network errors with better retry logic
-              if (
-                data.details === "fragLoadError" ||
-                data.details === "manifestLoadError"
-              ) {
-                if (!data.fatal) {
-                  return;
-                }
-
-                if (networkRetryCount < maxNetworkRetries) {
-                  networkRetryCount++;
-                  setTimeout(() => {
-                    hls.startLoad();
-                  }, 2000 * networkRetryCount); // Exponential backoff
-                  return;
-                }
-              }
-
-              // Handle buffer-related errors - don't treat as fatal
-              if (
-                data.details === "bufferSeekOverHole" ||
-                data.details === "bufferNudgeOnStall" ||
-                data.details === "bufferStalledError"
-              ) {
-                return; // Let HLS.js handle these automatically
-              }
-
-              // Handle level loading errors
-              if (
-                data.details === "levelLoadTimeOut" ||
-                data.details === "levelLoadError"
-              ) {
-                if (data.fatal) {
+              switch (data.type) {
+                case Hls.ErrorTypes.NETWORK_ERROR:
+                  console.log("Network error - attempting recovery");
                   hls.startLoad();
-                }
-                return;
-              }
-
-              // Only treat truly fatal errors as fatal after retry attempts
-              if (data.fatal) {
-                switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
-                    setTimeout(() => {
-                      try {
-                        hls.startLoad();
-                      } catch (e) {
-                        console.error("Failed to restart loading:", e);
-                        error.value = `Network error: Failed to load video segments (large segments may take time)`;
-                        isLoading.value = false;
-                      }
-                    }, 5000);
-                    break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:
-                    try {
-                      hls.recoverMediaError();
-                    } catch (e) {
-                      console.error("Failed to recover from media error:", e);
-                      error.value = `Media error: ${data.details || "Unknown media error"}`;
-                      isLoading.value = false;
-                    }
-                    break;
-                  default:
-                    error.value = `Failed to load video stream: ${data.details || "Unknown error"}`;
-                    isLoading.value = false;
-                    break;
-                }
+                  break;
+                case Hls.ErrorTypes.MEDIA_ERROR:
+                  console.log("Media error - attempting recovery");
+                  hls.recoverMediaError();
+                  break;
+                default:
+                  error.value = `Playback error: ${data.details}`;
+                  isLoading.value = false;
+                  break;
               }
             });
           } else {
@@ -208,7 +190,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
           // Fallback: try to load the video directly
           video.src = streamingUrl;
           video.addEventListener("loadedmetadata", () => {
-            isLoading.value = false;
+            handleLoadedMetadata$();
           });
           video.addEventListener("error", (e) => {
             console.error("Direct video loading failed:", e);
@@ -242,13 +224,24 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
   }
 
   return (
-    <article class="video-player-container">
+    <article class="video-player-container" ref={containerRef}>
       <div
         class="video-player"
         role="region"
         aria-label={`Video player for ${props.title}`}
+        style={{
+          aspectRatio: aspectRatio.value,
+        }}
+        data-aspect-ratio={aspectRatio.value}
       >
-        {isLoading.value && (
+        {!isVisible.value && (
+          <div class="video-placeholder" role="status">
+            <div class="placeholder-icon">📹</div>
+            <p>Video will load when visible...</p>
+          </div>
+        )}
+
+        {isLoading.value && isVisible.value && (
           <div
             class="video-loading"
             role="status"
@@ -259,26 +252,30 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
             <p>Loading video...</p>
           </div>
         )}
-        <video
-          ref={videoRef}
-          controls
-          class={`video-element ${isLoading.value ? "loading" : ""}`}
-          preload="metadata"
-          aria-label={props.title}
-          aria-describedby="video-title"
-          style={{
-            width: "100%",
-            height: "auto",
-            display: isLoading.value ? "none" : "block",
-          }}
-        >
-          <p>
-            Your browser does not support video playback. Please try a different
-            browser or update your current one.
-          </p>
-        </video>
+
+        {isVisible.value && (
+          <video
+            ref={videoRef}
+            controls
+            class={`video-element ${isLoading.value ? "loading" : ""}`}
+            preload="metadata"
+            aria-label={props.title}
+            aria-describedby="video-title"
+            onLoadedMetadata$={handleLoadedMetadata$}
+            style={{
+              width: "100%",
+              height: "auto",
+              display: isLoading.value ? "none" : "block",
+            }}
+          >
+            <p>
+              Your browser does not support video playback. Please try a
+              different browser or update your current one.
+            </p>
+          </video>
+        )}
       </div>
-      {!isLoading.value && (
+      {!isLoading.value && isVisible.value && (
         <header class="video-title">
           <h3 id="video-title">{props.title}</h3>
         </header>

@@ -19,11 +19,12 @@
   position: relative;
   width: 100%;
   background-color: var(--neutral-950);
-  aspect-ratio: 16 / 9;
+  /* aspect-ratio is now set dynamically via inline style */
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  max-height: 80vh; /* Prevent vertical videos from being too tall */
 }
 
 .video-element {
@@ -127,6 +128,10 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .video-player {
+    max-height: 70vh; /* Allow more space for vertical videos on mobile */
+  }
+
   .video-player-container {
     border-radius: var(--radius-md);
     margin: 0 calc(-1 * var(--spacing-4));

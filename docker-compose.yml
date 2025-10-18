@@ -50,15 +50,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Resource limits (adjust based on your server capacity)
+    # Resource limits (optimized for video streaming)
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: "1.0"
+          memory: 3G # Increased for video processing
+          cpus: "2.0" # More CPU for FFmpeg encoding
         reservations:
-          memory: 512M
-          cpus: "0.5"
+          memory: 1G # Higher baseline for video handling
+          cpus: "1.0"
 
 volumes:
   video-data:
