@@ -232,12 +232,22 @@ export default component$<VideoListProps>((props) => {
         <div class={`video-${displayMode}`}>
           {videos.value.map((video) => (
             <div key={video.id} class="video-card">
-              <div class="video-thumbnail">
-                <div
-                  class="play-icon"
-                  onClick$={() => handleVideoSelect(video)}
-                >
-                  ▶️
+              <div
+                class="video-thumbnail"
+                onClick$={() => handleVideoSelect(video)}
+                style={
+                  video.thumbnail
+                    ? `background-image: url('${video.thumbnail}')`
+                    : undefined
+                }
+              >
+                {!video.thumbnail && (
+                  <div class="thumbnail-placeholder">
+                    <span class="placeholder-icon">🎬</span>
+                  </div>
+                )}
+                <div class="play-overlay">
+                  <div class="play-icon">▶️</div>
                 </div>
                 {showMetadata && (
                   <div class="video-duration">

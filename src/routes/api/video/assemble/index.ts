@@ -25,6 +25,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
   try {
     // Parse request body - handle both JSON and FormData
     let requestData: any = {};
+    let thumbnail: File | null = null;
     const contentType = request.headers.get("content-type") || "";
 
     try {
@@ -40,6 +41,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           totalChunks: parseInt(formData.get("totalChunks") as string),
           title: formData.get("title") as string,
         };
+        thumbnail = formData.get("thumbnail") as File | null;
       } else {
         throw new Error(`Unsupported content type: ${contentType}`);
       }
@@ -302,8 +304,29 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
 
       console.log(`Starting video processing for: ${title} (ID: ${videoId})`);
 
+      // Save thumbnail if provided
+      let thumbnailPath: string | undefined;
+      if (thumbnail && thumbnail.size > 0) {
+        try {
+          console.log("Saving custom thumbnail...");
+          thumbnailPath = await VideoProcessor.saveThumbnail(
+            thumbnail,
+            videoId
+          );
+          console.log("Thumbnail saved:", thumbnailPath);
+        } catch (error) {
+          console.warn("Failed to save thumbnail, will auto-generate:", error);
+          thumbnailPath = undefined;
+        }
+      }
+
       // Process video to HLS (this runs in background)
-      VideoProcessor.processVideoToHLS(finalFilePath, videoId, title)
+      VideoProcessor.processVideoToHLS(
+        finalFilePath,
+        videoId,
+        title,
+        thumbnailPath
+      )
         .then(() => {
           console.log(`Video processing completed for: ${title}`);
           // Note: VideoProcessor handles cleanup of the input file

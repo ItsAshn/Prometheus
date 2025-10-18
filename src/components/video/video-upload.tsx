@@ -6,6 +6,8 @@ export const VideoUpload = component$(() => {
   useStylesScoped$(styles);
   const title = useSignal("");
   const selectedFile = useSignal<File | null>(null);
+  const selectedThumbnail = useSignal<File | null>(null);
+  const thumbnailPreview = useSignal<string>("");
   const isUploading = useSignal(false);
   const uploadProgress = useSignal(0);
   const message = useSignal("");
@@ -54,6 +56,55 @@ export const VideoUpload = component$(() => {
       selectedFile.value = file;
       message.value = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
       messageType.value = "info";
+    }
+  });
+
+  const handleThumbnailSelect = $((event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (file) {
+      // Validate file type
+      const allowedMimeTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ];
+      const fileExtension = file.name.toLowerCase().split(".").pop();
+      const allowedExtensions = ["jpg", "jpeg", "png", "webp"];
+
+      const isValidMimeType = allowedMimeTypes.includes(file.type);
+      const isValidExtension = allowedExtensions.includes(fileExtension || "");
+
+      if (!isValidMimeType && !isValidExtension) {
+        message.value = `Please select a valid image file. Supported: JPG, PNG, WebP`;
+        messageType.value = "error";
+        selectedThumbnail.value = null;
+        thumbnailPreview.value = "";
+        return;
+      }
+
+      // Validate file size (max 5MB for thumbnail)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        message.value = "Thumbnail size must be less than 5MB";
+        messageType.value = "error";
+        selectedThumbnail.value = null;
+        thumbnailPreview.value = "";
+        return;
+      }
+
+      selectedThumbnail.value = file;
+
+      // Create preview URL
+      if (typeof window !== "undefined") {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          thumbnailPreview.value = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+      }
     }
   });
 
@@ -228,6 +279,11 @@ export const VideoUpload = component$(() => {
       assembleFormData.append("totalChunks", totalChunks.toString());
       assembleFormData.append("title", title.value.trim());
 
+      // Add thumbnail if selected
+      if (selectedThumbnail.value) {
+        assembleFormData.append("thumbnail", selectedThumbnail.value);
+      }
+
       const assembleResponse = await fetch("/api/video/assemble", {
         method: "POST",
         body: assembleFormData,
@@ -270,10 +326,16 @@ export const VideoUpload = component$(() => {
         // Reset form
         title.value = "";
         selectedFile.value = null;
+        selectedThumbnail.value = null;
+        thumbnailPreview.value = "";
         const fileInput = document.getElementById(
           "video-file"
         ) as HTMLInputElement;
         if (fileInput) fileInput.value = "";
+        const thumbnailInput = document.getElementById(
+          "video-thumbnail"
+        ) as HTMLInputElement;
+        if (thumbnailInput) thumbnailInput.value = "";
 
         // Dispatch event to refresh video list
         window.dispatchEvent(new CustomEvent("video-uploaded"));
@@ -341,6 +403,35 @@ export const VideoUpload = component$(() => {
             <small class="file-info">
               📊 Supported formats: MP4, AVI, MOV, MKV, WebM • Maximum size: 5GB
             </small>
+          </div>
+
+          <div class="form-group">
+            <label for="video-thumbnail">
+              <span class="label-icon">🖼️</span>
+              Thumbnail (Optional)
+            </label>
+            <input
+              id="video-thumbnail"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              onChange$={handleThumbnailSelect}
+              disabled={isUploading.value}
+              class="form-input file-input"
+            />
+            <small class="file-info">
+              🎨 Recommended: 1280x720 • JPG, PNG, or WebP • Max 5MB • If not
+              provided, a thumbnail will be auto-generated
+            </small>
+            {thumbnailPreview.value && (
+              <div class="thumbnail-preview">
+                <img
+                  src={thumbnailPreview.value}
+                  alt="Thumbnail preview"
+                  width="320"
+                  height="180"
+                />
+              </div>
+            )}
           </div>
 
           {message.value && (

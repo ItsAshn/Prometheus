@@ -88,6 +88,36 @@ app.use(
   `/assets`,
   express.static(assetsDir, { immutable: true, maxAge: "1y" })
 );
+
+// Optimize video file serving with aggressive caching and range support
+// This serves HLS playlists and segments directly without API overhead
+const publicDir = join(distDir, "..", "public");
+
+// HLS video segments (.ts, .mp4) - immutable, cache forever
+app.use(
+  "/videos/hls",
+  express.static(join(publicDir, "videos", "hls"), {
+    immutable: true,
+    maxAge: "1y", // 1 year cache for segments (they never change)
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      // Enable range requests for video streaming
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Different caching for playlists vs segments
+      if (path.endsWith(".m3u8")) {
+        // Playlists should be cached briefly (they might update)
+        res.setHeader("Cache-Control", "public, max-age=10");
+      } else if (path.endsWith(".ts") || path.endsWith(".mp4")) {
+        // Segments are immutable - aggressive caching
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+    },
+  })
+);
+
 app.use(express.static(distDir, { redirect: false }));
 
 // Use Qwik City's page and endpoint request handler
