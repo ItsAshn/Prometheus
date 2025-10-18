@@ -17,6 +17,37 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
   const videoRef = useSignal<HTMLVideoElement>();
   const isLoading = useSignal(true);
   const error = useSignal("");
+<<<<<<< Updated upstream
+=======
+  const aspectRatio = useSignal<string>("16 / 9"); // Default aspect ratio
+  const isBuffering = useSignal(false); // Track buffering state
+  const hlsInstance = useSignal<any>(null); // Store HLS instance for quality control
+  const availableQualities = useSignal<
+    Array<{ level: number; height: number; name: string }>
+  >([]);
+  const currentQuality = useSignal<number>(-1); // -1 means auto
+  const showQualityMenu = useSignal(false);
+
+  // Quality change handler
+  const changeQuality$ = $((level: number) => {
+    const hls = hlsInstance.value;
+    if (!hls) return;
+
+    if (level === -1) {
+      // Auto quality
+      hls.currentLevel = -1;
+      currentQuality.value = -1;
+      console.log("Quality set to: Auto");
+    } else {
+      // Manual quality
+      hls.currentLevel = level;
+      currentQuality.value = level;
+      const quality = availableQualities.value.find((q) => q.level === level);
+      console.log(`Quality set to: ${quality?.name || level}`);
+    }
+    showQualityMenu.value = false;
+  });
+>>>>>>> Stashed changes
 
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track }) => {
@@ -55,6 +86,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               enableWorker: false,
               lowLatencyMode: false,
 
+<<<<<<< Updated upstream
               // Buffer management settings - optimized for large segments
               backBufferLength: 90, // Larger back buffer for stability
               maxBufferLength: 120, // Much larger forward buffer for big segments
@@ -69,12 +101,43 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               maxLoadingDelay: 15, // Much higher loading delay for large segments
               maxBufferHole: 2.0, // Allow much larger buffer holes
               highBufferWatchdogPeriod: 8, // Much longer watchdog period
+=======
+              // Buffer management - AGGRESSIVE buffering for slow networks
+              backBufferLength: 90, // Keep 90 seconds of back buffer
+              maxBufferLength: 60, // Build up to 60 seconds forward buffer before playing
+              maxMaxBufferLength: 120, // Max 120 seconds buffer
+              maxBufferSize: 120 * 1000 * 1000, // 120MB max buffer size
+              maxBufferHole: 1.0, // Allow 1s gaps without stalling
+
+              // High water mark - wait for more buffer before starting playback
+              highBufferWatchdogPeriod: 3, // Check buffer health every 3s
+              nudgeMaxRetry: 5, // More retries for nudging playback
+
+              // Stall handling - be more patient with slow loading
+              maxFragLookUpTolerance: 0.5,
+              liveSyncDurationCount: 3, // For live streams
+
+              // Loading optimizations - MORE TIME for slow connections
+              maxLoadingDelay: 8, // Allow 8s for loading (doubled from 4s)
+              fragLoadingTimeOut: 40000, // 40s timeout (doubled from 20s)
+              fragLoadingMaxRetry: 10, // More retry attempts
+              fragLoadingRetryDelay: 2000, // 2s retry delay (doubled)
+              fragLoadingMaxRetryTimeout: 64000, // Max timeout between retries
+
+              // Manifest loading - be patient
+              manifestLoadingTimeOut: 20000, // 20s (doubled)
+              manifestLoadingMaxRetry: 5,
+              manifestLoadingRetryDelay: 2000,
+              levelLoadingTimeOut: 20000, // 20s (doubled)
+              levelLoadingMaxRetry: 5,
+>>>>>>> Stashed changes
 
               // Fragment retry settings - dramatically increased for large segments
               fragLoadingTimeOut: 120000, // 2 minute timeout for very large segments
               fragLoadingMaxRetry: 10, // Many more retries for large segments
               fragLoadingRetryDelay: 3000, // Longer retry delay
 
+<<<<<<< Updated upstream
               // Manifest and level loading timeouts
               manifestLoadingTimeOut: 30000, // 30 second manifest timeout
               levelLoadingTimeOut: 30000, // 30 second level loading timeout
@@ -94,20 +157,133 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               maxStarvationDelay: 8, // Higher starvation delay
               liveSyncDurationCount: 5, // More segments for live sync
               liveMaxLatencyDurationCount: 10, // Higher latency tolerance
+=======
+              // ABR (Adaptive Bitrate) - conservative for slow networks
+              abrEwmaDefaultEstimate: 300000, // Start at 300kbps (lower estimate)
+              abrBandWidthFactor: 0.8, // Use 80% of estimated bandwidth (more conservative)
+              abrEwmaFastLive: 2.0,
+              abrEwmaSlowLive: 5.0,
+
+              // Startup optimizations - WAIT for buffer before playing
+              startLevel: -1, // Auto-select starting quality
+              autoStartLoad: true,
+              startPosition: -1,
+
+              // Buffering strategy
+              liveDurationInfinity: false,
+              liveBackBufferLength: 90,
+>>>>>>> Stashed changes
             });
 
             hls.loadSource(streamingUrl);
             hls.attachMedia(video);
 
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-              isLoading.value = false;
-              if (props.autoplay) {
-                video.play().catch(console.error);
+            // Store HLS instance for quality control
+            hlsInstance.value = hls;
+
+            // Track buffering state
+            let hasEnoughBuffer = false;
+
+            hls.on(Hls.Events.MANIFEST_PARSED, (event: any, data: any) => {
+              console.log("HLS manifest parsed, waiting for initial buffer...");
+
+              // Extract available quality levels
+              const levels = data.levels || [];
+              const qualities = levels.map((level: any, index: number) => {
+                const height = level.height || 0;
+                let name = "Auto";
+                if (height >= 2160) name = "2160p (4K)";
+                else if (height >= 1440) name = "1440p (2K)";
+                else if (height >= 1080) name = "1080p (HD)";
+                else if (height >= 720) name = "720p";
+                else if (height >= 480) name = "480p";
+                else if (height >= 360) name = "360p";
+
+                return { level: index, height, name };
+              });
+
+              availableQualities.value = qualities;
+              console.log("Available qualities:", qualities);
+
+              // Don't hide loading yet - wait for buffer
+            });
+
+            // Monitor buffer levels
+            hls.on(Hls.Events.BUFFER_APPENDED, () => {
+              if (!hasEnoughBuffer && video.buffered.length > 0) {
+                const bufferedEnd = video.buffered.end(
+                  video.buffered.length - 1
+                );
+                const bufferedAmount = bufferedEnd - video.currentTime;
+
+                console.log(`Buffer: ${bufferedAmount.toFixed(2)}s`);
+
+                // Wait for at least 10 seconds of buffer before allowing playback
+                if (bufferedAmount >= 10) {
+                  hasEnoughBuffer = true;
+                  isLoading.value = false;
+                  isBuffering.value = false;
+                  console.log("✅ Sufficient buffer loaded, ready to play");
+
+                  if (props.autoplay) {
+                    video.play().catch(console.error);
+                  }
+                }
+              }
+            });
+
+            // Handle buffering events
+            hls.on(Hls.Events.BUFFER_FLUSHING, () => {
+              console.log("Buffer flushing...");
+            });
+
+            // Detect when we're waiting for data
+            video.addEventListener("waiting", () => {
+              isBuffering.value = true;
+              console.log("⏳ Video waiting for data (buffering)...");
+            });
+
+            // Detect when we can play again
+            video.addEventListener("canplay", () => {
+              if (isBuffering.value) {
+                isBuffering.value = false;
+                console.log("▶️ Video can play again");
+              }
+            });
+
+            // Monitor playback progress and buffer
+            video.addEventListener("timeupdate", () => {
+              if (video.buffered.length > 0) {
+                const bufferedEnd = video.buffered.end(
+                  video.buffered.length - 1
+                );
+                const bufferAhead = bufferedEnd - video.currentTime;
+
+                // If buffer is running low, pause and wait
+                if (bufferAhead < 3 && !video.paused && !isBuffering.value) {
+                  console.warn(
+                    `⚠️ Low buffer: ${bufferAhead.toFixed(2)}s - may stutter`
+                  );
+                }
               }
             });
 
             let networkRetryCount = 0;
             const maxNetworkRetries = 3;
+
+            // Track quality level changes
+            hls.on(Hls.Events.LEVEL_SWITCHED, (event: any, data: any) => {
+              const level = data.level;
+              const quality = availableQualities.value.find(
+                (q) => q.level === level
+              );
+              console.log(`Quality switched to: ${quality?.name || level}`);
+
+              // Update current quality if in auto mode
+              if (currentQuality.value === -1) {
+                // Still in auto, just logging
+              }
+            });
 
             hls.on(Hls.Events.ERROR, (event: any, data: any) => {
               console.error("HLS error details:", {
@@ -259,6 +435,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
             <p>Loading video...</p>
           </div>
         )}
+<<<<<<< Updated upstream
         <video
           ref={videoRef}
           controls
@@ -277,6 +454,100 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
             browser or update your current one.
           </p>
         </video>
+=======
+
+        {isBuffering.value && !isLoading.value && (
+          <div
+            class="video-buffering"
+            role="status"
+            aria-live="polite"
+            aria-label="Buffering video"
+          >
+            <div class="loading-spinner" aria-hidden="true"></div>
+            <p>Buffering...</p>
+          </div>
+        )}
+
+        {isVisible.value && (
+          <video
+            ref={videoRef}
+            controls
+            class={`video-element ${isLoading.value ? "loading" : ""}`}
+            preload="metadata"
+            aria-label={props.title}
+            aria-describedby="video-title"
+            onLoadedMetadata$={handleLoadedMetadata$}
+            style={{
+              width: "100%",
+              height: "auto",
+              display: isLoading.value ? "none" : "block",
+            }}
+          >
+            <p>
+              Your browser does not support video playback. Please try a
+              different browser or update your current one.
+            </p>
+          </video>
+        )}
+
+        {/* Quality Selector */}
+        {availableQualities.value.length > 0 && !isLoading.value && (
+          <div class="quality-selector">
+            <button
+              class="quality-button"
+              onClick$={() => (showQualityMenu.value = !showQualityMenu.value)}
+              aria-label="Select video quality"
+            >
+              <span class="quality-icon">⚙️</span>
+              <span class="quality-label">
+                {currentQuality.value === -1
+                  ? "Auto"
+                  : availableQualities.value.find(
+                      (q) => q.level === currentQuality.value
+                    )?.name || "Quality"}
+              </span>
+            </button>
+
+            {showQualityMenu.value && (
+              <div class="quality-menu">
+                <div class="quality-menu-header">
+                  <span>Quality</span>
+                  <button
+                    class="quality-close"
+                    onClick$={() => (showQualityMenu.value = false)}
+                    aria-label="Close quality menu"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div class="quality-menu-items">
+                  <button
+                    class={`quality-menu-item ${currentQuality.value === -1 ? "active" : ""}`}
+                    onClick$={() => changeQuality$(-1)}
+                  >
+                    <span>Auto</span>
+                    {currentQuality.value === -1 && (
+                      <span class="quality-check">✓</span>
+                    )}
+                  </button>
+                  {availableQualities.value.map((quality) => (
+                    <button
+                      key={quality.level}
+                      class={`quality-menu-item ${currentQuality.value === quality.level ? "active" : ""}`}
+                      onClick$={() => changeQuality$(quality.level)}
+                    >
+                      <span>{quality.name}</span>
+                      {currentQuality.value === quality.level && (
+                        <span class="quality-check">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+>>>>>>> Stashed changes
       </div>
       {!isLoading.value && (
         <header class="video-title">

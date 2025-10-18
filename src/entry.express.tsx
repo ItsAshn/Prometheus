@@ -88,6 +88,65 @@ app.use(
   `/assets`,
   express.static(assetsDir, { immutable: true, maxAge: "1y" })
 );
+<<<<<<< Updated upstream
+=======
+
+// Optimize video file serving with aggressive caching and range support
+// This serves HLS playlists and segments directly without API overhead
+const publicDir = join(distDir, "..", "public");
+
+// HLS video segments (.ts, .mp4) - immutable, cache forever
+app.use(
+  "/videos/hls",
+  express.static(join(publicDir, "videos", "hls"), {
+    immutable: true,
+    maxAge: "1y", // 1 year cache for segments (they never change)
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      // Enable range requests for video streaming
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Range");
+
+      // Different caching for playlists vs segments
+      if (path.endsWith(".m3u8")) {
+        // Playlists should be cached briefly (they might update)
+        res.setHeader("Cache-Control", "public, max-age=10, must-revalidate");
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+      } else if (path.endsWith(".ts") || path.endsWith(".mp4")) {
+        // Segments are immutable - aggressive caching
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.setHeader("Content-Type", "video/MP2T");
+      }
+    },
+  })
+);
+
+// Serve video thumbnails
+app.use(
+  "/videos/thumbnails",
+  express.static(join(publicDir, "videos", "thumbnails"), {
+    maxAge: "7d", // Cache thumbnails for 7 days
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Set correct content type based on file extension
+      if (path.endsWith(".webp")) {
+        res.setHeader("Content-Type", "image/webp");
+      } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+        res.setHeader("Content-Type", "image/jpeg");
+      } else if (path.endsWith(".png")) {
+        res.setHeader("Content-Type", "image/png");
+      }
+    },
+  })
+);
+
+>>>>>>> Stashed changes
 app.use(express.static(distDir, { redirect: false }));
 
 // Use Qwik City's page and endpoint request handler

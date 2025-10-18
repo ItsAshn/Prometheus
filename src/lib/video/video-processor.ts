@@ -7,16 +7,18 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
-// Function to find and set FFmpeg path with multiple fallbacks
+// Function to find and set FFmpeg and FFprobe paths with multiple fallbacks
 async function setupFFmpegPath() {
-  const possiblePaths = [
+  // Setup FFmpeg
+  const possibleFFmpegPaths = [
     "ffmpeg", // System PATH - try this first since we install via apk
     "/usr/bin/ffmpeg", // Common Linux path
     "/usr/local/bin/ffmpeg", // Another common Linux path
     ffmpegPath, // From ffmpeg-static package as fallback
   ];
 
-  for (const pathToTry of possiblePaths) {
+  let ffmpegFound = false;
+  for (const pathToTry of possibleFFmpegPaths) {
     if (!pathToTry) continue;
     
     try {
@@ -24,25 +26,63 @@ async function setupFFmpegPath() {
       const { stdout } = await execAsync(`"${pathToTry}" -version`);
       if (stdout.includes("ffmpeg version")) {
         ffmpeg.setFfmpegPath(pathToTry);
-        return pathToTry;
+        console.log(`FFmpeg found at: ${pathToTry}`);
+        ffmpegFound = true;
+        break;
       }
     } catch (error) {
       continue;
     }
   }
 
-  // If ffmpeg-static path exists but isn't executable, try to make it executable
-  if (ffmpegPath) {
-    try {
-      await execAsync(`chmod +x "${ffmpegPath}"`);
-      ffmpeg.setFfmpegPath(ffmpegPath);
-      return ffmpegPath;
-    } catch (error) {
-      console.error("Failed to make FFmpeg executable:", error);
+  if (!ffmpegFound) {
+    // If ffmpeg-static path exists but isn't executable, try to make it executable
+    if (ffmpegPath) {
+      try {
+        await execAsync(`chmod +x "${ffmpegPath}"`);
+        ffmpeg.setFfmpegPath(ffmpegPath);
+        console.log(`FFmpeg made executable at: ${ffmpegPath}`);
+        ffmpegFound = true;
+      } catch (error) {
+        console.error("Failed to make FFmpeg executable:", error);
+      }
     }
   }
 
-  throw new Error("FFmpeg not found in any of the expected locations");
+  // Setup FFprobe - it's usually in the same location as ffmpeg
+  const possibleFFprobePaths = [
+    "ffprobe", // System PATH - try this first since we install via apk
+    "/usr/bin/ffprobe", // Common Linux path
+    "/usr/local/bin/ffprobe", // Another common Linux path
+  ];
+
+  let ffprobeFound = false;
+  for (const pathToTry of possibleFFprobePaths) {
+    if (!pathToTry) continue;
+    
+    try {
+      // Test if ffprobe is executable at this path
+      const { stdout } = await execAsync(`"${pathToTry}" -version`);
+      if (stdout.includes("ffprobe version")) {
+        ffmpeg.setFfprobePath(pathToTry);
+        console.log(`FFprobe found at: ${pathToTry}`);
+        ffprobeFound = true;
+        break;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  if (!ffmpegFound) {
+    throw new Error("FFmpeg not found in any of the expected locations");
+  }
+
+  if (!ffprobeFound) {
+    console.warn("FFprobe not found - some features may be limited");
+  }
+
+  return ffmpegFound && ffprobeFound;
 }
 
 // Initialize FFmpeg path on module load
@@ -124,6 +164,69 @@ export class VideoProcessor {
     await fs.mkdir(path.join(process.cwd(), "temp"), { recursive: true });
   }
 
+<<<<<<< Updated upstream
+=======
+  static async generateThumbnail(
+    inputPath: string,
+    videoId: string
+  ): Promise<string> {
+    await this.ensureDirectories();
+
+    if (!ffmpegReady) {
+      console.log("FFmpeg not ready for thumbnail generation, attempting setup...");
+      try {
+        await setupFFmpegPath();
+        ffmpegReady = true;
+      } catch (error) {
+        console.error("FFmpeg setup failed for thumbnail generation:", error);
+        throw new Error(`FFmpeg not available: ${error}`);
+      }
+    }
+
+    const thumbnailPath = path.join(this.thumbnailsDir, `${videoId}.jpg`);
+
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .screenshots({
+          timestamps: ['10%'], // Capture at 10% of video duration
+          filename: `${videoId}.jpg`,
+          folder: this.thumbnailsDir,
+          size: '1920x1080', // Support full HD thumbnails
+        })
+        .on('end', () => {
+          console.log(`Thumbnail generated: ${thumbnailPath}`);
+          resolve(`/videos/thumbnails/${videoId}.jpg`);
+        })
+        .on('error', (error) => {
+          console.error('Thumbnail generation error:', error);
+          reject(error);
+        });
+    });
+  }
+
+  static async saveThumbnail(
+    thumbnailFile: File,
+    videoId: string
+  ): Promise<string> {
+    await this.ensureDirectories();
+
+    const fileExtension = thumbnailFile.name.toLowerCase().split('.').pop();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+      throw new Error('Invalid thumbnail format. Use JPG, PNG, or WebP');
+    }
+
+    const thumbnailPath = path.join(this.thumbnailsDir, `${videoId}.${fileExtension}`);
+    const arrayBuffer = await thumbnailFile.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    await fs.writeFile(thumbnailPath, buffer);
+    
+    return `/videos/thumbnails/${videoId}.${fileExtension}`;
+  }
+
+>>>>>>> Stashed changes
   static async processVideoToHLS(
     inputPath: string,
     videoId: string,
@@ -151,22 +254,187 @@ export class VideoProcessor {
     const outputDir = path.join(this.hlsDir, videoId);
     await fs.mkdir(outputDir, { recursive: true });
 
-    const playlistPath = path.join(outputDir, "playlist.m3u8");
-    const segmentPattern = path.join(outputDir, "segment_%03d.ts");
+    const masterPlaylistPath = path.join(outputDir, "playlist.m3u8");
+    
+    // Get video metadata first to determine appropriate quality levels
+    const videoInfo = await this.getVideoInfo(inputPath);
+    const sourceWidth = videoInfo.width || 1920;
+    const sourceHeight = videoInfo.height || 1080;
+    
+    // Define quality levels based on source resolution
+    const qualityLevels = this.determineQualityLevels(sourceWidth, sourceHeight);
+    
+    console.log(`Source resolution: ${sourceWidth}x${sourceHeight}`);
+    console.log(`Generating ${qualityLevels.length} quality levels:`, qualityLevels.map(q => q.name));
+
+    // Process each quality level
+    const processingPromises = qualityLevels.map((quality, index) => {
+      return this.processQualityLevel(
+        inputPath,
+        outputDir,
+        quality,
+        index,
+        qualityLevels.length,
+        videoId,
+        title
+      );
+    });
+
+    try {
+      await Promise.all(processingPromises);
+      
+      // Generate master playlist
+      await this.generateMasterPlaylist(masterPlaylistPath, qualityLevels);
+      
+      console.log("All quality levels processed successfully");
+    } catch (error) {
+      console.error("Error processing quality levels:", error);
+      throw error;
+    }
 
     return new Promise((resolve, reject) => {
-      let duration = 0;
-      let resolution = "";
-      let fileSize = 0;
-      let lastProgressLog = 0; // Track last progress log time
+      // Get final metadata after processing
+      this.getVideoInfo(inputPath)
+        .then(async (info) => {
+          let duration = info.duration || 0;
+          let resolution = `${sourceWidth}x${sourceHeight}`;
+          let fileSize = 0;
+
+          try {
+            const stats = await fs.stat(inputPath);
+            fileSize = stats.size;
+          } catch (error) {
+            console.warn(`Could not get file size for ${inputPath}:`, error);
+          }
+
+          // Update status to completed
+          await this.updateProcessingStatus(videoId, "completed", 100, title);
+
+          // Clean up original file
+          try {
+            await fs.unlink(inputPath);
+            console.log(`Cleaned up input file: ${inputPath}`);
+          } catch (error) {
+            console.warn(`Input file already cleaned up: ${inputPath}`);
+          }
+
+          const metadata: VideoMetadata = {
+            id: videoId,
+            title,
+            duration,
+            resolution,
+            fileSize,
+            createdAt: new Date().toISOString(),
+            hlsPath: `/videos/hls/${videoId}/playlist.m3u8`,
+            thumbnail: thumbnailPath,
+            status: "completed",
+            processingProgress: 100,
+          };
+
+          await this.saveVideoMetadata(metadata);
+          resolve(metadata);
+        })
+        .catch(async (error) => {
+          await this.updateProcessingStatus(videoId, "failed", 0, title);
+          reject(error);
+        });
+    });
+  }
+
+  private static determineQualityLevels(sourceWidth: number, sourceHeight: number) {
+    const levels = [];
+    
+    // Define all possible quality levels
+    const allLevels = [
+      { name: "2160p", width: 3840, height: 2160, bitrate: "8000k", audioBitrate: "192k" },
+      { name: "1440p", width: 2560, height: 1440, bitrate: "6000k", audioBitrate: "192k" },
+      { name: "1080p", width: 1920, height: 1080, bitrate: "4000k", audioBitrate: "128k" },
+      { name: "720p", width: 1280, height: 720, bitrate: "2500k", audioBitrate: "128k" },
+      { name: "480p", width: 854, height: 480, bitrate: "1200k", audioBitrate: "96k" },
+      { name: "360p", width: 640, height: 360, bitrate: "800k", audioBitrate: "96k" },
+    ];
+    
+    // Only include quality levels at or below source resolution
+    for (const level of allLevels) {
+      if (level.width <= sourceWidth && level.height <= sourceHeight) {
+        levels.push(level);
+      }
+    }
+    
+    // Always include at least 360p as minimum quality
+    if (levels.length === 0) {
+      levels.push(allLevels[allLevels.length - 1]); // 360p
+    }
+    
+    return levels;
+  }
+
+  private static async getVideoInfo(inputPath: string): Promise<{
+    width?: number;
+    height?: number;
+    duration?: number;
+  }> {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(inputPath, (err, metadata) => {
+        if (err) {
+          console.error("FFprobe error:", err);
+          console.warn("Could not probe video, using default values");
+          // Return default values instead of rejecting
+          resolve({
+            width: 1920,
+            height: 1080,
+            duration: 0,
+          });
+          return;
+        }
+        
+        const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+        
+        if (!videoStream) {
+          console.warn("No video stream found, using default values");
+          resolve({
+            width: 1920,
+            height: 1080,
+            duration: metadata.format.duration || 0,
+          });
+          return;
+        }
+        
+        resolve({
+          width: videoStream.width || 1920,
+          height: videoStream.height || 1080,
+          duration: metadata.format.duration || 0,
+        });
+      });
+    });
+  }
+
+  private static async processQualityLevel(
+    inputPath: string,
+    outputDir: string,
+    quality: { name: string; width: number; height: number; bitrate: string; audioBitrate: string },
+    index: number,
+    total: number,
+    videoId: string,
+    title: string
+  ): Promise<void> {
+    const qualityDir = path.join(outputDir, quality.name);
+    await fs.mkdir(qualityDir, { recursive: true });
+
+    const playlistPath = path.join(qualityDir, "playlist.m3u8");
+    const segmentPattern = path.join(qualityDir, "segment_%03d.ts");
+
+    return new Promise((resolve, reject) => {
+      console.log(`Processing ${quality.name} (${index + 1}/${total})...`);
 
       ffmpeg(inputPath)
         .inputOptions([
-          "-fflags +genpts", // Generate presentation timestamps
-          "-analyzeduration 100M", // Analyze more of the file to get better metadata
-          "-probesize 100M", // Probe more of the file for format detection
+          "-fflags +genpts",
+          "-analyzeduration 100M",
+          "-probesize 100M",
         ])
         .outputOptions([
+<<<<<<< Updated upstream
           // Video encoding settings
           "-c:v libx264",
           "-preset medium", // Better compression than 'fast'
@@ -176,9 +444,22 @@ export class VideoProcessor {
           "-pix_fmt yuv420p", // Ensure compatible pixel format
           "-maxrate 5000k", // Limit bitrate to 5Mbps for smaller segments
           "-bufsize 10000k", // Buffer size for rate control
+=======
+          // Video encoding
+          "-c:v libx264",
+          "-preset faster",
+          "-crf 23",
+          "-profile:v main",
+          "-level 4.0",
+          "-pix_fmt yuv420p",
+          `-maxrate ${quality.bitrate}`,
+          `-bufsize ${parseInt(quality.bitrate) * 2}k`,
+          `-vf scale=${quality.width}:${quality.height}:force_original_aspect_ratio=decrease,pad=${quality.width}:${quality.height}:(ow-iw)/2:(oh-ih)/2`,
+>>>>>>> Stashed changes
           
-          // Audio encoding settings
+          // Audio encoding
           "-c:a aac",
+<<<<<<< Updated upstream
           "-ac 2", // Force stereo audio
           "-ar 48000", // Use 48kHz sample rate (more standard for video)
           "-b:a 128k", // Set audio bitrate
@@ -201,19 +482,35 @@ export class VideoProcessor {
           "-r 30", // Force 30fps output for consistency
           
           // Additional HLS flags for better compatibility
-          "-hls_flags independent_segments+program_date_time",
-          // Using standard TS segments for maximum compatibility
+=======
+          "-ac 2",
+          "-ar 48000",
+          `-b:a ${quality.audioBitrate}`,
+          "-profile:a aac_low",
           
-          // Buffer and threading optimizations
-          "-max_muxing_queue_size 1024", // Handle complex files better
-          "-threads 0", // Use all available CPU cores
+          // HLS settings
+          "-f hls",
+          "-hls_time 2",
+          "-hls_list_size 0",
+          "-hls_segment_filename", segmentPattern,
+          "-g 60",
+          "-keyint_min 60",
+          "-sc_threshold 0",
+          "-force_key_frames expr:gte(t,n_forced*2)",
+          "-avoid_negative_ts make_zero",
+          "-vsync cfr",
+          "-r 30",
+>>>>>>> Stashed changes
+          "-hls_flags independent_segments+program_date_time",
+          "-max_muxing_queue_size 1024",
+          "-threads 0",
         ])
         .output(playlistPath)
         .on("start", (commandLine) => {
-          console.log("FFmpeg process started:", commandLine);
-          console.log("Input file:", inputPath);
+          console.log(`FFmpeg ${quality.name}:`, commandLine.substring(0, 200));
         })
         .on("progress", async (progress) => {
+<<<<<<< Updated upstream
           // Debug: log the full progress object to understand what's available
           console.log("Progress data:", {
             percent: progress.percent,
@@ -325,15 +622,44 @@ export class VideoProcessor {
           } catch (error) {
             await this.updateProcessingStatus(videoId, "failed", 0, title);
             reject(error);
+=======
+          if (progress.percent && !isNaN(progress.percent)) {
+            const overallProgress = ((index + progress.percent / 100) / total) * 100;
+            await this.updateProcessingStatus(
+              videoId,
+              "processing",
+              Math.round(overallProgress),
+              title
+            );
+>>>>>>> Stashed changes
           }
         })
-        .on("error", async (error) => {
-          console.error("FFmpeg error:", error);
-          await this.updateProcessingStatus(videoId, "failed", 0, title);
+        .on("end", () => {
+          console.log(`✅ ${quality.name} completed`);
+          resolve();
+        })
+        .on("error", (error) => {
+          console.error(`❌ ${quality.name} failed:`, error);
           reject(error);
         })
         .run();
     });
+  }
+
+  private static async generateMasterPlaylist(
+    masterPath: string,
+    qualityLevels: Array<{ name: string; width: number; height: number; bitrate: string; audioBitrate: string }>
+  ): Promise<void> {
+    let masterContent = "#EXTM3U\n#EXT-X-VERSION:3\n\n";
+    
+    for (const quality of qualityLevels) {
+      const bandwidth = parseInt(quality.bitrate) * 1000 + parseInt(quality.audioBitrate) * 1000;
+      masterContent += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${quality.width}x${quality.height},NAME="${quality.name}"\n`;
+      masterContent += `${quality.name}/playlist.m3u8\n\n`;
+    }
+    
+    await fs.writeFile(masterPath, masterContent);
+    console.log("Master playlist generated:", masterPath);
   }
 
   private static parseFFmpegDuration(duration: string): number {

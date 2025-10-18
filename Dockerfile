@@ -4,6 +4,9 @@ FROM node:22-alpine
 # Install ffmpeg for video processing, git for updates, and docker CLI for container management
 RUN apk add --no-cache ffmpeg git docker-cli
 
+# Verify ffmpeg and ffprobe are installed
+RUN ffmpeg -version && ffprobe -version
+
 # Create app directory
 WORKDIR /app
 
