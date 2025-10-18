@@ -38,55 +38,60 @@ function verifyAdminToken(request: Request): boolean {
 // Helper function to get current version
 function getCurrentVersion(): string {
   try {
-    // First, try to get version from package.json
-    const packageJsonPath = path.join(process.cwd(), "package.json");
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
-    const baseVersion = packageJson.version || "1.0.0";
-
-    // Try to get git information to create a more accurate version string
+    // Try to get git information first - this is the source of truth
     try {
       // Check if we're in a git repository
       const isGitRepo = fs.existsSync(path.join(process.cwd(), ".git"));
 
       if (isGitRepo) {
-        // Try to get the latest git tag
+        // Try to get exact tag at current commit (this works for releases)
         try {
-          const gitTag = execSync("git describe --tags --abbrev=0", {
+          const exactTag = execSync("git describe --exact-match --tags HEAD", {
             encoding: "utf-8",
             stdio: ["pipe", "pipe", "pipe"],
           }).trim();
 
-          if (gitTag) {
-            // We have a tag, check if we're at that tag or ahead of it
-            try {
-              const commitsSinceTag = execSync(
-                "git rev-list --count HEAD ^" + gitTag,
-                {
-                  encoding: "utf-8",
-                  stdio: ["pipe", "pipe", "pipe"],
-                }
-              ).trim();
+          if (exactTag) {
+            // We're exactly at a tag - this is a release version
+            return exactTag;
+          }
+        } catch {
+          // Not at an exact tag, continue to check for nearest tag
+        }
 
-              if (commitsSinceTag && parseInt(commitsSinceTag) > 0) {
-                // We're ahead of the tag, get short commit hash
-                const shortHash = execSync("git rev-parse --short HEAD", {
-                  encoding: "utf-8",
-                  stdio: ["pipe", "pipe", "pipe"],
-                }).trim();
+        // Try to get the nearest tag and commits since
+        try {
+          const gitDescribe = execSync("git describe --tags --long", {
+            encoding: "utf-8",
+            stdio: ["pipe", "pipe", "pipe"],
+          }).trim();
 
-                return `${gitTag}+${commitsSinceTag}.${shortHash}`;
+          if (gitDescribe) {
+            // Format: v1.0.0-5-g1a2b3c4 (tag-commits-hash)
+            const parts = gitDescribe.split("-");
+            if (parts.length >= 3) {
+              const tag = parts.slice(0, -2).join("-");
+              const commitsSinceTag = parseInt(parts[parts.length - 2]);
+              const shortHash = parts[parts.length - 1];
+
+              if (commitsSinceTag > 0) {
+                // We're ahead of the tag
+                return `${tag}+${commitsSinceTag}.${shortHash}`;
               } else {
                 // We're at the tag
-                return gitTag;
+                return tag;
               }
-            } catch {
-              // Can't determine commits since tag, just return the tag
-              return gitTag;
             }
           }
         } catch {
-          // No tags found, build version from commit
+          // No tags found at all, build version from commit
           try {
+            const packageJsonPath = path.join(process.cwd(), "package.json");
+            const packageJson = JSON.parse(
+              fs.readFileSync(packageJsonPath, "utf-8")
+            );
+            const baseVersion = packageJson.version || "1.0.0";
+
             const shortHash = execSync("git rev-parse --short HEAD", {
               encoding: "utf-8",
               stdio: ["pipe", "pipe", "pipe"],
@@ -99,18 +104,19 @@ function getCurrentVersion(): string {
 
             return `${baseVersion}-dev.${commitCount}+${shortHash}`;
           } catch {
-            // Can't get git info, return base version with dev marker
-            return `${baseVersion}-dev`;
+            // Can't get git info, fall through to package.json
           }
         }
       }
     } catch (error) {
-      // Git commands failed, continue to return base version
+      // Git commands failed, continue to package.json fallback
       console.log("Could not retrieve git version info:", error);
     }
 
     // Fallback to package.json version
-    return baseVersion;
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+    return packageJson.version || "1.0.0";
   } catch {
     return "1.0.0";
   }
@@ -291,6 +297,39 @@ async function applyUpdate(version: string): Promise<void> {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
     packageJson.version = version.replace(/^v/, "");
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+
+    // Create a git tag to mark this version
+    try {
+      // Configure git if needed (for Docker containers)
+      try {
+        execSync('git config user.email "prometheus@system.local"', {
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+        execSync('git config user.name "Prometheus System"', {
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch {
+        // Git config might already be set, ignore errors
+      }
+
+      // Stage and commit the version update
+      execSync("git add package.json", { stdio: ["pipe", "pipe", "pipe"] });
+      execSync(`git commit -m "Update to ${version}"`, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      // Create annotated tag for the version
+      execSync(`git tag -a "${version}" -m "Release ${version}"`, {
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+
+      console.log(`Created git tag: ${version}`);
+    } catch (error: any) {
+      // Git tagging failed, but update was still applied
+      console.warn(
+        `Warning: Could not create git tag: ${error.message}. Update still applied.`
+      );
+    }
 
     console.log("Update applied successfully");
   } catch (error: any) {
