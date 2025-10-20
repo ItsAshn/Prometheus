@@ -2,8 +2,6 @@ import {
   $,
   component$,
   Slot,
-  useStore,
-  useTask$,
   useStylesScoped$,
   useVisibleTask$,
 } from "@builder.io/qwik";
@@ -17,32 +15,25 @@ import { loadSiteConfigServer } from "~/lib/data-loaders";
 import { getCurrentThemeCSS } from "~/lib/theme-utils";
 import styles from "./layout.css?inline";
 
-interface SiteConfig {
-  channelName: string;
-  channelDescription: string;
-  lastUpdated: string;
-}
-
-// Load theme CSS dynamically on every request
+// Shared data loaders - loaded once per request, available to all child routes
 export const useThemeLoader = routeLoader$(async () => {
   const themeCSS = await getCurrentThemeCSS();
   return { themeCSS };
 });
 
+export const useAuthLoader = routeLoader$(async () => {
+  return await checkAdminAuthServer();
+});
+
+export const useSiteConfigLoader = routeLoader$(async () => {
+  return await loadSiteConfigServer();
+});
+
 export default component$(() => {
   const theme = useThemeLoader();
+  const auth = useAuthLoader();
+  const siteConfig = useSiteConfigLoader();
   useStylesScoped$(styles);
-
-  const authStore = useStore({
-    isAuthenticated: false,
-    isLoading: true,
-    username: "",
-  });
-
-  const siteStore = useStore({
-    config: null as SiteConfig | null,
-    isLoadingConfig: true,
-  });
 
   // Inject theme CSS into document head
   // eslint-disable-next-line qwik/no-use-visible-task
@@ -63,28 +54,9 @@ export default component$(() => {
     });
   });
 
-  // Check authentication status and load site config on component load
-  useTask$(async () => {
-    const [authStatus, config] = await Promise.all([
-      checkAdminAuthServer(),
-      loadSiteConfigServer(),
-    ]);
-
-    authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.user?.username || "";
-    authStore.isLoading = false;
-
-    if (config) {
-      siteStore.config = config;
-    }
-    siteStore.isLoadingConfig = false;
-  });
-
   const handleLogout = $(async () => {
     try {
       await logoutAdminServer();
-      authStore.isAuthenticated = false;
-      authStore.username = "";
 
       // Clear client-side cookie as additional measure
       if (typeof document !== "undefined") {
@@ -100,7 +72,7 @@ export default component$(() => {
   });
 
   // Use site config for display, with fallbacks
-  const channelName = siteStore.config?.channelName || "Your Video Channel";
+  const channelName = siteConfig.value?.channelName || "Your Video Channel";
 
   return (
     <div class="layout-container">
@@ -123,30 +95,23 @@ export default component$(() => {
 
           <div class="header-right">
             <ThemeToggle />
-            {!authStore.isLoading && (
+            {auth.value.isAuthenticated ? (
               <>
-                {authStore.isAuthenticated ? (
-                  <>
-                    <div class="user-info">
-                      <span>👤</span>
-                      <span class="user-name">{authStore.username}</span>
-                    </div>
-                    <a href="/admin" class="btn-header btn-admin">
-                      Dashboard
-                    </a>
-                    <button
-                      onClick$={handleLogout}
-                      class="btn-header btn-logout"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <a href="/admin" class="btn-header btn-admin">
-                    Admin Login
-                  </a>
-                )}
+                <div class="user-info">
+                  <span>👤</span>
+                  <span class="user-name">{auth.value.user?.username}</span>
+                </div>
+                <a href="/admin" class="btn-header btn-admin">
+                  Dashboard
+                </a>
+                <button onClick$={handleLogout} class="btn-header btn-logout">
+                  Logout
+                </button>
               </>
+            ) : (
+              <a href="/admin" class="btn-header btn-admin">
+                Admin Login
+              </a>
             )}
           </div>
         </div>

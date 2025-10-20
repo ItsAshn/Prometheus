@@ -16,6 +16,9 @@
     "isolatedModules": true,
     "outDir": "tmp",
     "noEmit": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "paths": {
       "~/*": ["./src/*"]
     },

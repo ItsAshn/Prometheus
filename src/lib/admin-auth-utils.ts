@@ -102,22 +102,8 @@ export const logoutAdminServer = server$(async function () {
     // Import the auth service directly
     const { ADMIN_COOKIE_NAME } = await import("~/lib/auth");
 
-    // Clear the auth cookie (logout) with all possible options
+    // Clear the auth cookie
     this.cookie.delete(ADMIN_COOKIE_NAME, { path: "/" });
-
-    // Also try to clear with different path options as a fallback
-    this.cookie.delete(ADMIN_COOKIE_NAME, { path: "" });
-    this.cookie.delete(ADMIN_COOKIE_NAME, {});
-
-    // Set an expired cookie as an additional measure
-    this.cookie.set(ADMIN_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: -1,
-      expires: new Date(0),
-      path: "/",
-    });
 
     return true;
   } catch (error) {

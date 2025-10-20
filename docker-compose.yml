@@ -26,8 +26,31 @@ services:
       - video-data:/app/public/videos
       - temp-data:/app/temp
       - app-data:/app/data
-      # Docker socket for container management
+
+      # SECURITY WARNING: Docker socket mounting
+      # Mounting /var/run/docker.sock gives the container FULL control over the Docker daemon
+      # This is equivalent to root access on the host system!
+      #
+      # Required for: Auto-update feature in admin panel
+      #
+      # Security implications:
+      # - Container can start/stop/modify ANY container on the host
+      # - Container can access volumes from other containers
+      # - Container can potentially escape to host system
+      #
+      # Safer alternatives:
+      # 1. Use Watchtower for automated updates (runs in separate container)
+      # 2. Use webhook-based deployment (e.g., GitHub webhooks)
+      # 3. Manual updates via SSH/command line
+      # 4. Use Docker API with restricted permissions (create a proxy container)
+      #
+      # If you keep this mounting:
+      # - Ensure the container is properly secured
+      # - Never expose the update endpoint publicly without authentication
+      # - Consider network isolation
+      # - Monitor container activity
       - /var/run/docker.sock:/var/run/docker.sock
+
       # Mount the docker-compose.yml for updates
       - ./docker-compose.yml:/app/docker-compose.yml:ro
       # Optional: Mount local directory for development

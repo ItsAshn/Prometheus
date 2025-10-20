@@ -4,6 +4,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { CONFIG } from "../constants";
 
 const execAsync = promisify(exec);
 
@@ -118,13 +119,12 @@ export interface ProcessingStatus {
 }
 
 export class VideoProcessor {
-  private static videosDir = path.join(process.cwd(), "public", "videos");
-  private static hlsDir = path.join(process.cwd(), "public", "videos", "hls");
-  private static thumbnailsDir = path.join(process.cwd(), "public", "videos", "thumbnails");
+  private static videosDir = path.join(process.cwd(), CONFIG.PATHS.VIDEOS_DIR);
+  private static hlsDir = path.join(process.cwd(), CONFIG.PATHS.HLS_DIR);
+  private static thumbnailsDir = path.join(process.cwd(), CONFIG.PATHS.THUMBNAILS_DIR);
   private static processingStatusFile = path.join(
     process.cwd(),
-    "temp",
-    "processing-status.json"
+    CONFIG.PATHS.PROCESSING_STATUS_FILE
   );
 
   static async checkFFmpegStatus(): Promise<{
@@ -212,10 +212,10 @@ export class VideoProcessor {
     await this.ensureDirectories();
 
     const fileExtension = thumbnailFile.name.toLowerCase().split('.').pop();
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const allowedExtensions = CONFIG.VIDEO.THUMBNAIL_FORMATS;
 
-    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
-      throw new Error('Invalid thumbnail format. Use JPG, PNG, or WebP');
+    if (!fileExtension || !allowedExtensions.includes(fileExtension as any)) {
+      throw new Error(`Invalid thumbnail format. Use ${allowedExtensions.join(', ')}`);
     }
 
     const thumbnailPath = path.join(this.thumbnailsDir, `${videoId}.${fileExtension}`);
@@ -347,18 +347,8 @@ export class VideoProcessor {
   private static determineQualityLevels(sourceWidth: number, sourceHeight: number) {
     const levels = [];
     
-    // Define all possible quality levels
-    const allLevels = [
-      { name: "2160p", width: 3840, height: 2160, bitrate: "8000k", audioBitrate: "192k" },
-      { name: "1440p", width: 2560, height: 1440, bitrate: "6000k", audioBitrate: "192k" },
-      { name: "1080p", width: 1920, height: 1080, bitrate: "4000k", audioBitrate: "128k" },
-      { name: "720p", width: 1280, height: 720, bitrate: "2500k", audioBitrate: "128k" },
-      { name: "480p", width: 854, height: 480, bitrate: "1200k", audioBitrate: "96k" },
-      { name: "360p", width: 640, height: 360, bitrate: "800k", audioBitrate: "96k" },
-    ];
-    
     // Only include quality levels at or below source resolution
-    for (const level of allLevels) {
+    for (const level of CONFIG.QUALITY_LEVELS) {
       if (level.width <= sourceWidth && level.height <= sourceHeight) {
         levels.push(level);
       }
@@ -366,7 +356,7 @@ export class VideoProcessor {
     
     // Always include at least 360p as minimum quality
     if (levels.length === 0) {
-      levels.push(allLevels[allLevels.length - 1]); // 360p
+      levels.push(CONFIG.QUALITY_LEVELS[CONFIG.QUALITY_LEVELS.length - 1]); // 360p
     }
     
     return levels;
@@ -439,8 +429,8 @@ export class VideoProcessor {
         .outputOptions([
           // Video encoding
           "-c:v libx264",
-          "-preset faster",
-          "-crf 23",
+          `-preset ${CONFIG.FFMPEG.ENCODING_PRESET}`,
+          `-crf ${CONFIG.FFMPEG.CRF_VALUE}`,
           "-profile:v main",
           "-level 4.0",
           "-pix_fmt yuv420p",
@@ -457,16 +447,16 @@ export class VideoProcessor {
           
           // HLS settings
           "-f hls",
-          "-hls_time 2",
+          `-hls_time ${CONFIG.VIDEO.SEGMENT_DURATION}`,
           "-hls_list_size 0",
           "-hls_segment_filename", segmentPattern,
-          "-g 60",
-          "-keyint_min 60",
+          `-g ${CONFIG.FFMPEG.KEYFRAME_INTERVAL}`,
+          `-keyint_min ${CONFIG.FFMPEG.KEYFRAME_INTERVAL}`,
           "-sc_threshold 0",
-          "-force_key_frames expr:gte(t,n_forced*2)",
+          `-force_key_frames expr:gte(t,n_forced*${CONFIG.VIDEO.SEGMENT_DURATION})`,
           "-avoid_negative_ts make_zero",
           "-vsync cfr",
-          "-r 30",
+          `-r ${CONFIG.FFMPEG.FRAME_RATE}`,
           "-hls_flags independent_segments+program_date_time",
           "-max_muxing_queue_size 1024",
           "-threads 0",
@@ -683,7 +673,7 @@ export class VideoProcessor {
       
       let totalSize = 0;
       let largeSegmentCount = 0;
-      const LARGE_SEGMENT_THRESHOLD = 5 * 1024 * 1024; // 5MB threshold
+      const LARGE_SEGMENT_THRESHOLD = CONFIG.FFMPEG.LARGE_SEGMENT_THRESHOLD;
       
       for (const file of segmentFiles) {
         const filePath = path.join(hlsDir, file);
@@ -698,7 +688,8 @@ export class VideoProcessor {
       
       const averageSegmentSize = totalSize / segmentFiles.length;
       const averageSegmentSizeMB = Math.round(averageSegmentSize / 1024 / 1024 * 100) / 100;
-      const needsReprocessing = averageSegmentSize > LARGE_SEGMENT_THRESHOLD || largeSegmentCount > segmentFiles.length * 0.3;
+      const needsReprocessing = averageSegmentSize > LARGE_SEGMENT_THRESHOLD || 
+        largeSegmentCount > segmentFiles.length * CONFIG.FFMPEG.MAX_LARGE_SEGMENT_PERCENTAGE;
       
       let recommendation = "";
       if (needsReprocessing) {

@@ -1,12 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { ensureJWTSecret } from "./env-utils";
+import { CONFIG } from "./constants";
 
 // Get admin credentials from environment variables
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme123";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || CONFIG.DEFAULTS.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || CONFIG.DEFAULTS.ADMIN_PASSWORD;
 const JWT_SECRET = ensureJWTSecret(); // Auto-generates if not provided
-const SALT_ROUNDS = 12;
+const SALT_ROUNDS = CONFIG.AUTH.SALT_ROUNDS;
 
 export interface AdminUser {
   username: string;
@@ -46,7 +47,7 @@ export class AdminAuthService {
   }
 
   static generateToken(payload: JWTPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: "24h" });
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: CONFIG.AUTH.JWT_EXPIRY });
   }
 
   static verifyToken(token: string): JWTPayload | null {
@@ -66,11 +67,11 @@ export class AdminAuthService {
   }
 }
 
-export const ADMIN_COOKIE_NAME = "admin-auth-token";
+export const ADMIN_COOKIE_NAME = CONFIG.AUTH.COOKIE_NAME;
 export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production", // Secure in production
   sameSite: "lax" as const,
-  maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  maxAge: CONFIG.AUTH.JWT_EXPIRY_MS,
   path: "/",
 };

@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
+import { CONFIG } from "~/lib/constants";
 
 export const onPost: RequestHandler = async ({ request, json, cookie }) => {
   try {
@@ -36,12 +37,11 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       const sizeInGB = sizeInBytes / (1024 * 1024 * 1024);
 
       // Check if size exceeds our limit before parsing
-      const maxSize = 2 * 1024 * 1024 * 1024; // 2GB limit
-      if (sizeInBytes > maxSize) {
+      if (sizeInBytes > CONFIG.VIDEO.MAX_SIZE_BYTES) {
         json(413, {
           // 413 Payload Too Large
           success: false,
-          message: `File size (${sizeInGB.toFixed(2)} GB) exceeds 2GB limit. Please compress or split the video.`,
+          message: `File size (${sizeInGB.toFixed(2)} GB) exceeds ${CONFIG.VIDEO.MAX_SIZE_GB}GB limit. Please compress or split the video.`,
         });
         return;
       }
@@ -83,18 +83,17 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       return;
     }
 
-    // Validate file size (2GB limit)
-    const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
-    if (videoFile.size > maxSize) {
+    // Validate file size
+    if (videoFile.size > CONFIG.VIDEO.MAX_SIZE_BYTES) {
       json(400, {
         success: false,
-        message: "File size exceeds 2GB limit",
+        message: `File size exceeds ${CONFIG.VIDEO.MAX_SIZE_GB}GB limit`,
       });
       return;
     }
 
     // Create temp directory and save uploaded file
-    const uploadDir = path.join(process.cwd(), "temp");
+    const uploadDir = path.join(process.cwd(), CONFIG.PATHS.TEMP_DIR);
     await fs.mkdir(uploadDir, { recursive: true });
 
     const tempFileName = `temp_${Date.now()}_${videoFile.name}`;
@@ -105,23 +104,18 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     await fs.writeFile(tempFilePath, new Uint8Array(arrayBuffer));
 
     // Validate file type
-    const allowedTypes = [
-      "video/mp4",
-      "video/avi",
-      "video/x-msvideo",
-      "video/quicktime",
-      "video/mov",
-      "video/x-matroska",
-      "video/mkv",
-      "video/webm",
-    ];
+    const allowedTypes = CONFIG.VIDEO.ALLOWED_MIME_TYPES;
 
     // Also check file extension as fallback
     const fileExtension = videoFile.name?.toLowerCase().split(".").pop();
-    const allowedExtensions = ["mp4", "avi", "mov", "mkv", "webm"];
+    const allowedExtensions = CONFIG.VIDEO.ALLOWED_EXTENSIONS;
 
-    const isValidMimeType = allowedTypes.includes(videoFile.type || "");
-    const isValidExtension = allowedExtensions.includes(fileExtension || "");
+    const isValidMimeType = allowedTypes.includes(
+      (videoFile.type as any) || ""
+    );
+    const isValidExtension = allowedExtensions.includes(
+      (fileExtension as any) || ""
+    );
 
     if (!isValidMimeType && !isValidExtension) {
       // Clean up uploaded file

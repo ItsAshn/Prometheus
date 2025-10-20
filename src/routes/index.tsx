@@ -1,75 +1,37 @@
 import {
   component$,
-  useStore,
-  useTask$,
-  useVisibleTask$,
   useStylesScoped$,
   useSignal,
+  useVisibleTask$,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
-import { loadSiteConfigServer, loadVideosServer } from "~/lib/data-loaders";
+import { loadVideosServer } from "~/lib/data-loaders";
 import VideoList from "~/components/video/VideoList";
 import { ChannelHeader } from "~/components/channel/channel-header";
+import { useAuthLoader, useSiteConfigLoader } from "./layout";
+import { CONFIG } from "~/lib/constants";
 import styles from "./index.css?inline";
-
-interface SiteConfig {
-  channelName: string;
-  channelDescription: string;
-  lastUpdated: string;
-}
 
 export default component$(() => {
   useStylesScoped$(styles);
-  const authStore = useStore({
-    isAuthenticated: false,
-    isLoading: true,
-    username: "",
-  });
 
-  const siteStore = useStore({
-    config: null as SiteConfig | null,
-    isLoadingConfig: true,
-  });
+  // Use shared loaders from layout instead of re-fetching
+  const auth = useAuthLoader();
+  const siteConfig = useSiteConfigLoader();
 
   const videoCount = useSignal(0);
 
-  // Check authentication status and load site config on component load
-  useTask$(async () => {
-    const [authStatus, config, videos] = await Promise.all([
-      checkAdminAuthServer(),
-      loadSiteConfigServer(),
-      loadVideosServer(),
-    ]);
-
-    authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.user?.username || "";
-    authStore.isLoading = false;
-
-    if (config) {
-      siteStore.config = config;
-    }
-    siteStore.isLoadingConfig = false;
-
+  // Load video count on client side only (not critical for SSR)
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    const videos = await loadVideosServer();
     videoCount.value = videos?.length || 0;
   });
 
-  // Also check when page becomes visible (after redirect)
-  // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(() => {
-    const recheckAuth = async () => {
-      const status = await checkAdminAuthServer();
-      authStore.isAuthenticated = status.isAuthenticated;
-      authStore.username = status.user?.username || "";
-      authStore.isLoading = false;
-    };
-    recheckAuth();
-  });
-
   // Use site config for display, with fallbacks
-  const channelName = siteStore.config?.channelName || "Your Video Channel";
+  const channelName = siteConfig.value?.channelName || "Your Video Channel";
   const channelDescription =
-    siteStore.config?.channelDescription ||
+    siteConfig.value?.channelDescription ||
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.";
 
   return (
@@ -78,13 +40,13 @@ export default component$(() => {
         channelName={channelName}
         channelDescription={channelDescription}
         videoCount={videoCount.value}
-        isAuthenticated={authStore.isAuthenticated}
+        isAuthenticated={auth.value.isAuthenticated}
         activeTab="home"
       />
 
       <div class="channel-content">
         <div class="content-container">
-          {authStore.isAuthenticated && (
+          {auth.value.isAuthenticated && (
             <section class="admin-quick-actions">
               <h3 class="section-title">Admin Quick Actions</h3>
               <div class="quick-actions-grid">
@@ -121,13 +83,13 @@ export default component$(() => {
               </a>
             </div>
             <VideoList
-              count={6}
+              count={CONFIG.VIDEO.HOME_PAGE_COUNT}
               showTitles={true}
               displayMode="grid"
               enablePlayer={false}
-              showActions={authStore.isAuthenticated}
+              showActions={auth.value.isAuthenticated}
               showMetadata={true}
-              isAdmin={authStore.isAuthenticated}
+              isAdmin={auth.value.isAuthenticated}
             />
           </section>
 
