@@ -110,6 +110,12 @@ export default component$<VideoListProps>((props) => {
         credentials: "include", // Include cookies for authentication
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Delete failed with status:", response.status, errorText);
+        throw new Error(`Failed to delete video: ${response.status}`);
+      }
+
       const result = await response.json();
 
       if (result.success) {
@@ -125,7 +131,7 @@ export default component$<VideoListProps>((props) => {
       }
     } catch (error) {
       console.error("Error deleting video:", error);
-      alert("Failed to delete video");
+      alert(`Failed to delete video: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   });
 
