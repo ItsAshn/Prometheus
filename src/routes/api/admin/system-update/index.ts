@@ -16,8 +16,10 @@ function verifyAdminToken(request: Request): boolean {
 
     const cookies = cookieHeader.split(";").reduce(
       (acc, cookie) => {
-        const [key, value] = cookie.trim().split("=");
-        acc[key] = value;
+        const [rawKey, rawValue] = cookie.trim().split("=");
+        const key = rawKey?.trim();
+        if (!key) return acc;
+        acc[key] = rawValue ?? "";
         return acc;
       },
       {} as Record<string, string>
@@ -71,7 +73,10 @@ function getCurrentVersion(): string {
             const parts = gitDescribe.split("-");
             if (parts.length >= 3) {
               const tag = parts.slice(0, -2).join("-");
-              const commitsSinceTag = parseInt(parts[parts.length - 2]);
+              const commitsSinceTag = parseInt(
+                parts[parts.length - 2] || "0",
+                10
+              );
               const shortHash = parts[parts.length - 1];
 
               if (commitsSinceTag > 0) {

@@ -247,6 +247,10 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
         const chunkPath = chunks[i];
         console.log(`Reading chunk ${i + 1}/${chunks.length}: ${chunkPath}`);
 
+        if (!chunkPath) {
+          throw new Error(`Chunk path is undefined for index ${i}`);
+        }
+
         try {
           const chunkData = await fs.readFile(chunkPath);
           await writeStream.write(chunkData);

@@ -143,7 +143,7 @@ export class VideoProcessor {
       const { stdout } = await execAsync(`"${currentPath}" -version`);
       
       const versionMatch = stdout.match(/ffmpeg version ([^\s]+)/);
-      const version = versionMatch ? versionMatch[1] : "unknown";
+      const version = versionMatch?.[1] ?? "unknown";
 
       return {
         available: true,
@@ -279,26 +279,39 @@ export class VideoProcessor {
     const qualityLevels = this.determineQualityLevels(sourceWidth, sourceHeight);
     
     console.log(`Source resolution: ${sourceWidth}x${sourceHeight}`);
-    console.log(`Generating ${qualityLevels.length} quality levels:`, qualityLevels.map(q => q.name));
+    console.log(`Generating ${qualityLevels.length} quality levels:`, qualityLevels.map(q => q?.name ?? "unknown"));
 
     // Process each quality level
-    const processingPromises = qualityLevels.map((quality, index) => {
-      return this.processQualityLevel(
-        inputPath,
-        outputDir,
-        quality,
-        index,
-        qualityLevels.length,
-        videoId,
-        title
-      );
-    });
+    const processingPromises = qualityLevels
+      .map((quality, index) => {
+        if (!quality) return null;
+        return this.processQualityLevel(
+          inputPath,
+          outputDir,
+          quality,
+          index,
+          qualityLevels.length,
+          videoId,
+          title
+        );
+      })
+      .filter((p): p is Promise<void> => p !== null);
 
     try {
       await Promise.all(processingPromises);
       
-      // Generate master playlist
-      await this.generateMasterPlaylist(masterPlaylistPath, qualityLevels);
+      // Generate master playlist (filter out any undefined entries)
+      const filteredQualityLevels = qualityLevels.filter((q) => q !== undefined) as Array<{
+        name: string;
+        width: number;
+        height: number;
+        bitrate: string;
+        audioBitrate: string;
+      }>;
+      await this.generateMasterPlaylist(
+        masterPlaylistPath,
+        filteredQualityLevels
+      );
       
       console.log("All quality levels processed successfully");
     } catch (error) {
@@ -506,9 +519,10 @@ export class VideoProcessor {
 
   private static parseFFmpegDuration(duration: string): number {
     const parts = duration.split(":");
-    const hours = parseFloat(parts[0]) || 0;
-    const minutes = parseFloat(parts[1]) || 0;
-    const seconds = parseFloat(parts[2]) || 0;
+    const [hoursStr = "0", minutesStr = "0", secondsStr = "0"] = parts;
+    const hours = parseFloat(hoursStr) || 0;
+    const minutes = parseFloat(minutesStr) || 0;
+    const seconds = parseFloat(secondsStr) || 0;
     return hours * 3600 + minutes * 60 + seconds;
   }
 
@@ -608,7 +622,7 @@ export class VideoProcessor {
         title,
         startTime:
           existingIndex >= 0
-            ? statusData[existingIndex].startTime
+            ? (statusData[existingIndex]?.startTime ?? new Date().toISOString())
             : new Date().toISOString(),
       };
 
