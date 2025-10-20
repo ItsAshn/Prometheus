@@ -67,7 +67,9 @@ function verifyAdminToken(request: Request): boolean {
     const cookies = cookieHeader.split(";").reduce(
       (acc, cookie) => {
         const [key, value] = cookie.trim().split("=");
-        acc[key] = value;
+        if (key && value) {
+          acc[key] = value;
+        }
         return acc;
       },
       {} as Record<string, string>
@@ -94,9 +96,11 @@ export const onGet: RequestHandler = async ({ json, request }) => {
   try {
     const config = loadSiteConfig();
     json(200, config);
+    return;
   } catch (error) {
     console.error("Error getting site config:", error);
     json(500, { message: "Internal server error" });
+    return;
   }
 };
 
@@ -144,10 +148,12 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       message: "Site configuration updated successfully",
       config,
     });
+    return;
   } catch (error) {
     console.error("[Site Config] Error updating site config:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Internal server error";
     json(500, { message: errorMessage });
+    return;
   }
 };

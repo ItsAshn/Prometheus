@@ -45,11 +45,13 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       message: "Admin login successful",
       user: AdminAuthService.getAdminUser(),
     });
+    return;
   } catch (error) {
     console.error("Admin login error:", error);
     json(500, {
       success: false,
       message: "Login failed",
     });
+    return;
   }
 };

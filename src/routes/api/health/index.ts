@@ -85,6 +85,7 @@ export const onGet: RequestHandler = async ({ json }) => {
       uptime: process.uptime(),
       checks,
     });
+    return;
   } catch (error) {
     console.error("Health check error:", error);
     json(500, {
@@ -92,6 +93,7 @@ export const onGet: RequestHandler = async ({ json }) => {
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : "Unknown error",
     });
+    return;
   }
 };
 

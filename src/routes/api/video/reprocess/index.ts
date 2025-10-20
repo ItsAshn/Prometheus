@@ -27,11 +27,13 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       message: "Re-processing started with compatible audio settings",
       videoId,
     });
+    return;
   } catch (error) {
     console.error("Re-processing trigger error:", error);
     json(500, {
       success: false,
       message: "Failed to trigger re-processing",
     });
+    return;
   }
 };

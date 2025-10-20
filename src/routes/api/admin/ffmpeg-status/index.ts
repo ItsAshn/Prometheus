@@ -47,6 +47,7 @@ export const onGet: RequestHandler = async ({ cookie, json }) => {
         ],
       },
     });
+    return;
   } catch (error) {
     console.error("FFmpeg status check error:", error);
     json(500, {
@@ -54,5 +55,6 @@ export const onGet: RequestHandler = async ({ cookie, json }) => {
       message: "Failed to check FFmpeg status",
       error: error instanceof Error ? error.message : "Unknown error",
     });
+    return;
   }
 };

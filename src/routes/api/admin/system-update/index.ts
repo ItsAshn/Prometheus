@@ -496,6 +496,7 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
         details: result.details.join("\n"),
         restarting: result.success,
       });
+      return;
     } else if (action === "restart") {
       // Just restart without updating
       const restartResult = await restartDockerContainer();
@@ -506,6 +507,7 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
         details: restartResult,
         restarting: true,
       });
+      return;
     } else if (action === "check") {
       // Check for available updates
       try {
@@ -523,11 +525,13 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
           releaseNotes: latestRelease.releaseNotes,
           isPrerelease: latestRelease.isPrerelease,
         });
+        return;
       } catch (error: any) {
         json(500, {
           success: false,
           error: `Failed to check for updates: ${error.message}`,
         });
+        return;
       }
     } else {
       // Default: return status
@@ -547,6 +551,7 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
         currentVersion,
         timestamp: new Date().toISOString(),
       });
+      return;
     }
   } catch (error: any) {
     console.error("Update system error:", error);
@@ -554,5 +559,6 @@ export const onGet: RequestHandler = async ({ json, request, url }) => {
       success: false,
       error: error.message || "Update system error",
     });
+    return;
   }
 };

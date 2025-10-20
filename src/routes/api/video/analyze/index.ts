@@ -22,11 +22,13 @@ export const onPost: RequestHandler = async ({ json, request }) => {
       videoId,
       analysis,
     });
+    return;
   } catch (error) {
     console.error("Video analysis error:", error);
     json(500, {
       success: false,
       message: "Failed to analyze video segments",
     });
+    return;
   }
 };

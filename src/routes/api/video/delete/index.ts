@@ -31,11 +31,13 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
         success: true,
         message: "Video deleted successfully",
       });
+      return;
     } else {
       json(500, {
         success: false,
         message: "Failed to delete video",
       });
+      return;
     }
   } catch (error) {
     console.error("Error deleting video:", error);
@@ -43,5 +45,6 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
       success: false,
       message: "Internal server error",
     });
+    return;
   }
 };
