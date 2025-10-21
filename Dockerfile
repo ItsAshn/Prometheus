@@ -82,6 +82,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/public ./public
 
+# Copy theme files (needed for runtime theme loading)
+COPY --from=builder /app/src/themes ./src/themes
+
 # Copy scripts and configuration files
 COPY scripts ./scripts
 COPY qwik.env.d.ts tsconfig.json ./
