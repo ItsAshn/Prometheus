@@ -6,7 +6,7 @@ import { CONFIG } from "~/lib/constants";
 
 /**
  * Health check endpoint
- * Returns system status including FFmpeg availability, disk space, and processing queue
+ * Returns system status including FFmpeg availability, disk space, processing queue, and Docker info
  */
 export const onGet: RequestHandler = async ({ json }) => {
   try {
@@ -19,6 +19,11 @@ export const onGet: RequestHandler = async ({ json }) => {
       disk: { available: true, free: 0, total: 0, used: 0, percentUsed: 0 },
       processing: { active: 0, queued: 0 },
       directories: { videosDir: false, hlsDir: false, tempDir: false },
+      docker: {
+        isContainer: false,
+        hostname: null as string | null,
+        version: null as string | null,
+      },
     };
 
     // Check FFmpeg availability
@@ -67,6 +72,18 @@ export const onGet: RequestHandler = async ({ json }) => {
       checks.disk.available = false;
     }
 
+    // Check Docker environment
+    try {
+      checks.docker = {
+        isContainer:
+          process.env.DOCKER_CONTAINER === "true" || !!process.env.HOSTNAME,
+        hostname: process.env.HOSTNAME || null,
+        version: process.env.APP_VERSION || null,
+      };
+    } catch (error) {
+      console.error("Docker check failed:", error);
+    }
+
     // Determine overall health status
     const healthy =
       checks.ffmpeg.available &&
@@ -81,8 +98,10 @@ export const onGet: RequestHandler = async ({ json }) => {
     json(statusCode, {
       status,
       timestamp: new Date().toISOString(),
-      version: process.env.APP_VERSION || "unknown",
+      version: process.env.APP_VERSION || "1.0.0",
       uptime: process.uptime(),
+      nodejs: process.version,
+      platform: process.platform,
       checks,
     });
     return;
