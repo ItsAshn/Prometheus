@@ -26,8 +26,23 @@ COPY . .
 RUN rm -rf dist server .qwik tmp node_modules/.vite node_modules/.cache || true
 
 # Build the application for production
-RUN NODE_ENV=production pnpm build.client && \
-    NODE_ENV=production pnpm build.server
+# First build client (creates dist/)
+RUN echo "=== Building client ===" && \
+    pnpm build.client && \
+    echo "=== Client build complete ===" && \
+    ls -la dist/ 2>&1 || echo "ERROR: dist directory was not created!"
+
+# Then build server (creates server/)
+RUN echo "=== Building server ===" && \
+    pnpm build.server && \
+    echo "=== Server build complete ===" && \
+    ls -la server/ 2>&1 || echo "ERROR: server directory was not created!"
+
+# Verify build outputs exist
+RUN echo "=== Verifying build outputs ===" && \
+    (ls -la dist/build/ && echo "✓ dist/build exists") || echo "✗ dist/build missing" && \
+    (ls -la dist/assets/ && echo "✓ dist/assets exists") || echo "✗ dist/assets missing" && \
+    (ls -la server/ && echo "✓ server exists") || echo "✗ server missing"
 
 # Run cleanup script to remove build artifacts
 RUN node scripts/cleanup.js || true
@@ -78,16 +93,26 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Copy built application from builder stage
+# Note: dist folder contains client-side build (HTML, JS, CSS assets)
+# Note: server folder contains SSR server build and additional assets
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/public ./public
 
-# Copy theme files (needed for runtime theme loading)
+# Copy source files needed for runtime (theme files are read dynamically)
 COPY --from=builder /app/src/themes ./src/themes
 
 # Copy scripts and configuration files
 COPY scripts ./scripts
 COPY qwik.env.d.ts tsconfig.json ./
+
+# Verify all necessary files are present
+RUN echo "=== Verifying production files ===" && \
+    (ls -la dist/build/ && echo "✓ dist/build copied") || echo "✗ WARNING: dist/build missing!" && \
+    (ls -la dist/assets/ && echo "✓ dist/assets copied") || echo "✗ WARNING: dist/assets missing!" && \
+    (ls -la server/ && echo "✓ server copied") || echo "✗ WARNING: server missing!" && \
+    (ls -la src/themes/ && echo "✓ src/themes copied") || echo "✗ WARNING: src/themes missing!" && \
+    echo "=== Verification complete ==="
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/public/videos/hls /app/temp /app/tmp /app/data && \
