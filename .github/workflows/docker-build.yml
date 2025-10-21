@@ -86,8 +86,8 @@ jobs:
             APP_VERSION=${{ steps.meta.outputs.VERSION }}
             BUILD_DATE=${{ steps.meta.outputs.BUILD_DATE }}
             VCS_REF=${{ steps.meta.outputs.VCS_REF }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
       - name: Image digest
