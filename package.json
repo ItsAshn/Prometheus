@@ -29,7 +29,17 @@
     "serve": "node server/entry.express",
     "prestart": "node scripts/ensure-jwt.js",
     "start": "vite --open --mode ssr",
-    "qwik": "qwik"
+    "qwik": "qwik",
+    "docker:build": "docker build -t itsashn/prometheus:latest .",
+    "docker:build:version": "docker build --build-arg APP_VERSION=%npm_package_version% --build-arg BUILD_DATE=%date:~-4,4%-%date:~-10,2%-%date:~-7,2%T%time:~0,2%:%time:~3,2%:%time:~6,2% -t itsashn/prometheus:%npm_package_version% -t itsashn/prometheus:latest .",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart",
+    "docker:update": "bash scripts/update-docker.sh",
+    "docker:update:win": "powershell -ExecutionPolicy Bypass -File scripts/update-docker.ps1",
+    "docker:push": "docker push itsashn/prometheus:latest",
+    "docker:push:version": "docker push itsashn/prometheus:%npm_package_version% && docker push itsashn/prometheus:latest"
   },
   "devDependencies": {
     "@builder.io/qwik": "^1.16.0",
