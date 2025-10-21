@@ -1,0 +1,74 @@
+name: Build Test
+
+on:
+  push:
+    branches: [main, master, develop, update-to-docker-image-updates]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Test Production Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          # Admin Configuration
+          ADMIN_USERNAME=admin
+          ADMIN_PASSWORD=test-password-for-ci
+
+          # JWT Secret - Generated for CI
+          JWT_SECRET=$(openssl rand -hex 32)
+
+          # Environment
+          NODE_ENV=production
+          EOF
+
+      - name: Build client
+        run: NODE_ENV=production pnpm build.client
+
+      - name: Build server
+        run: NODE_ENV=production pnpm build.server
+
+      - name: Check build artifacts
+        run: |
+          echo "Checking for build artifacts..."
+          test -d dist || (echo "dist directory not found!" && exit 1)
+          test -d server || (echo "server directory not found!" && exit 1)
+          test -f dist/q-manifest.json || (echo "q-manifest.json not found!" && exit 1)
+          test -f server/entry.express.js || (echo "entry.express.js not found!" && exit 1)
+          echo "✅ All build artifacts found!"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: matrix.node-version == '22.x'
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            server/
+          retention-days: 7
