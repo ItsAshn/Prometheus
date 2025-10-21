@@ -30,13 +30,13 @@ services:
       - app-data:/app/data
     environment:
       - NODE_ENV=production
-      - APP_VERSION=${APP_VERSION}
-      - BUILD_DATE=${BUILD_DATE}
-      - VCS_REF=${VCS_REF}
+      # Note: APP_VERSION, BUILD_DATE, and VCS_REF are baked into the Docker image at build time
+      # Don't override them here - they come from the image's build args
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme123}
       - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
       - DOCKER_CONTAINER=true
+      - IMAGE_NAME=${IMAGE_NAME:-itsashn/prometheus}
     env_file:
       - .env
     networks:
@@ -66,9 +66,8 @@ services:
           memory: 1G # Higher baseline for video handling
           cpus: "1.0"
     labels:
-      - "com.prometheus.version=${APP_VERSION}"
-      - "com.prometheus.build-date=${BUILD_DATE}"
-      - "com.prometheus.vcs-ref=${VCS_REF}"
+      - "com.prometheus.description=Self-hosted video streaming platform"
+      # Version info is available via the API at /api/version
 
 volumes:
   video-data:
