@@ -131,7 +131,9 @@ export default component$<VideoListProps>((props) => {
       }
     } catch (error) {
       console.error("Error deleting video:", error);
-      alert(`Failed to delete video: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Failed to delete video: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     }
   });
 

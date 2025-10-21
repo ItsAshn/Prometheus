@@ -572,7 +572,7 @@ export class VideoProcessor {
     try {
       // Remove HLS files
       const hlsDir = path.join(this.hlsDir, videoId);
-      await fs.rmdir(hlsDir, { recursive: true });
+      await fs.rm(hlsDir, { recursive: true, force: true });
 
       // Update metadata
       const metadata = await this.getVideoMetadata();

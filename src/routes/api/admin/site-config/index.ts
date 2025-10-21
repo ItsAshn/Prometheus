@@ -1,9 +1,8 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import jwt from "jsonwebtoken";
+import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
 const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
 
 interface SiteConfig {
@@ -57,38 +56,15 @@ function saveSiteConfig(config: SiteConfig): void {
   }
 }
 
-function verifyAdminToken(request: Request): boolean {
-  try {
-    const cookieHeader = request.headers.get("cookie");
-    if (!cookieHeader) {
-      return false;
-    }
-
-    const cookies = cookieHeader.split(";").reduce(
-      (acc, cookie) => {
-        const [key, value] = cookie.trim().split("=");
-        if (key && value) {
-          acc[key] = value;
-        }
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-
-    const token = cookies["admin-auth-token"];
-    if (!token) {
-      return false;
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded && decoded.isAdmin;
-  } catch {
-    return false;
+export const onGet: RequestHandler = async ({ json, cookie }) => {
+  const authCookie = cookie.get(ADMIN_COOKIE_NAME);
+  if (!authCookie?.value) {
+    json(401, { message: "Unauthorized" });
+    return;
   }
-}
 
-export const onGet: RequestHandler = async ({ json, request }) => {
-  if (!verifyAdminToken(request)) {
+  const isValidToken = AdminAuthService.verifyToken(authCookie.value);
+  if (!isValidToken) {
     json(401, { message: "Unauthorized" });
     return;
   }
@@ -104,11 +80,19 @@ export const onGet: RequestHandler = async ({ json, request }) => {
   }
 };
 
-export const onPost: RequestHandler = async ({ json, request }) => {
+export const onPost: RequestHandler = async ({ json, request, cookie }) => {
   console.log("[Site Config] POST request received");
 
-  if (!verifyAdminToken(request)) {
-    console.log("[Site Config] Unauthorized access attempt");
+  const authCookie = cookie.get(ADMIN_COOKIE_NAME);
+  if (!authCookie?.value) {
+    console.log("[Site Config] Unauthorized access attempt - no cookie");
+    json(401, { message: "Unauthorized" });
+    return;
+  }
+
+  const isValidToken = AdminAuthService.verifyToken(authCookie.value);
+  if (!isValidToken) {
+    console.log("[Site Config] Unauthorized access attempt - invalid token");
     json(401, { message: "Unauthorized" });
     return;
   }
