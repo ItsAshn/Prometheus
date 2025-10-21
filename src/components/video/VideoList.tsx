@@ -167,7 +167,7 @@ export default component$<VideoListProps>((props) => {
   };
 
   // eslint-disable-next-line qwik/no-use-visible-task
-  useVisibleTask$(async () => {
+  useVisibleTask$(async ({ cleanup }) => {
     await loadVideos();
 
     // Listen for video upload events
@@ -178,9 +178,9 @@ export default component$<VideoListProps>((props) => {
     if (typeof window !== "undefined") {
       window.addEventListener("video-uploaded", handleVideoUploaded);
 
-      return () => {
+      cleanup(() => {
         window.removeEventListener("video-uploaded", handleVideoUploaded);
-      };
+      });
     }
   });
 

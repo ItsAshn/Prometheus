@@ -1,8 +1,6 @@
 import { component$, isDev } from "@builder.io/qwik";
 import { QwikCityProvider, RouterOutlet } from "@builder.io/qwik-city";
-
-// Theme CSS is now loaded dynamically via layout.tsx
-// No static global.css import needed
+import "./global.css";
 
 export default component$(() => {
   /**
