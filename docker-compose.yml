@@ -10,7 +10,7 @@ services:
     # Pull pre-built image from Docker Hub
     # Version info is baked into the image during CI/CD build
     image: ${IMAGE_NAME:-itsashn/prometheus}:${IMAGE_TAG:-latest}
-    
+
     container_name: prometheus
     restart: unless-stopped
     ports:
