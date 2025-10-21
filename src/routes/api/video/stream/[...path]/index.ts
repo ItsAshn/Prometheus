@@ -166,7 +166,7 @@ export const onGet: RequestHandler = async ({ params, send, request }) => {
       if (rangeHeader && fileSize > 1024 * 1024) {
         // Only for files > 1MB
         const parts = rangeHeader.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
+        const start = parts[0] ? parseInt(parts[0], 10) : 0;
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
         if (start >= fileSize || end >= fileSize) {
