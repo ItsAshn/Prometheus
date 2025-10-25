@@ -13,6 +13,8 @@ interface SiteConfig {
   aboutText?: string;
   customCss?: string;
   selectedTemplate?: string;
+  bannerImage?: string;
+  avatarImage?: string;
   lastUpdated: string;
 }
 
@@ -38,6 +40,10 @@ export const SiteConfigManager = component$(() => {
   const aboutText = useSignal("");
   const customCss = useSignal("");
   const selectedTemplate = useSignal("modern");
+  const bannerImage = useSignal("");
+  const avatarImage = useSignal("");
+  const isUploadingBanner = useSignal(false);
+  const isUploadingAvatar = useSignal(false);
 
   // Server function to load site configuration
   const loadSiteConfig = server$(async function () {
@@ -67,9 +73,13 @@ export const SiteConfigManager = component$(() => {
     aboutText: string;
     customCss: string;
     selectedTemplate: string;
+    bannerImage: string;
+    avatarImage: string;
   }) {
     try {
       const cookieHeader = this.request.headers.get("cookie") || "";
+
+      console.log("[Frontend] Sending config to API:", config);
 
       const response = await fetch(`${this.url.origin}/api/admin/site-config`, {
         method: "POST",
@@ -80,17 +90,43 @@ export const SiteConfigManager = component$(() => {
         body: JSON.stringify(config),
       });
 
+      console.log("[Frontend] Response status:", response.status);
+      console.log(
+        "[Frontend] Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      // Get the raw response text first
+      const responseText = await response.text();
+      console.log("[Frontend] Raw response:", responseText);
+
+      if (!responseText || responseText.trim() === "") {
+        console.error("[Frontend] Empty response from server");
+        return {
+          success: false,
+          error:
+            "Server returned empty response. Check server logs for details.",
+        };
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("[Frontend] Failed to parse response:", parseError);
+        return {
+          success: false,
+          error: `Invalid JSON response: ${responseText.substring(0, 100)}`,
+        };
+      }
+
       if (response.ok) {
-        const result = await response.json();
         return { success: true, config: result.config };
       }
 
-      const errorData = await response
-        .json()
-        .catch(() => ({ message: "Unknown error" }));
       return {
         success: false,
-        error: errorData.message || "Failed to save configuration",
+        error: result.message || "Failed to save configuration",
       };
     } catch (error) {
       console.error("Error saving site config:", error);
@@ -114,6 +150,8 @@ export const SiteConfigManager = component$(() => {
       aboutText.value = configResult.config.aboutText || "";
       customCss.value = themeConfig.customCss || "";
       selectedTemplate.value = themeConfig.selectedTemplate || "modern";
+      bannerImage.value = configResult.config.bannerImage || "";
+      avatarImage.value = configResult.config.avatarImage || "";
     } else {
       store.error = configResult.error || "Failed to load configuration";
     }
@@ -138,6 +176,8 @@ export const SiteConfigManager = component$(() => {
         aboutText: aboutText.value.trim(),
         customCss: customCss.value,
         selectedTemplate: selectedTemplate.value,
+        bannerImage: bannerImage.value,
+        avatarImage: avatarImage.value,
       };
 
       const result = await saveSiteConfig(config);
@@ -202,6 +242,52 @@ export const SiteConfigManager = component$(() => {
     store.error = "";
     store.successMessage = "";
   });
+
+  const handleImageUpload = $(
+    async (file: File, imageType: "banner" | "avatar") => {
+      store.error = "";
+      store.successMessage = "";
+
+      if (imageType === "banner") {
+        isUploadingBanner.value = true;
+      } else {
+        isUploadingAvatar.value = true;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("type", imageType);
+
+        const response = await fetch("/api/admin/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          if (imageType === "banner") {
+            bannerImage.value = result.imageUrl;
+          } else {
+            avatarImage.value = result.imageUrl;
+          }
+          store.successMessage = `${imageType === "banner" ? "Banner" : "Avatar"} uploaded successfully!`;
+        } else {
+          store.error = result.message || "Failed to upload image";
+        }
+      } catch (error) {
+        store.error = "Failed to upload image";
+        console.error("Image upload error:", error);
+      } finally {
+        if (imageType === "banner") {
+          isUploadingBanner.value = false;
+        } else {
+          isUploadingAvatar.value = false;
+        }
+      }
+    }
+  );
 
   if (store.isLoading) {
     return (
@@ -269,6 +355,74 @@ export const SiteConfigManager = component$(() => {
               class="form-input"
               rows={3}
             />
+          </div>
+
+          <div class="form-group">
+            <label for="banner-image">Channel Banner Image</label>
+            {bannerImage.value && (
+              <div class="image-preview">
+                <img
+                  src={bannerImage.value}
+                  alt="Banner preview"
+                  width="800"
+                  height="200"
+                  style="max-width: 100%; height: auto; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;"
+                />
+              </div>
+            )}
+            <input
+              id="banner-image"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              disabled={store.isSaving || isUploadingBanner.value}
+              class="form-input"
+              onChange$={async (event) => {
+                const input = event.target as HTMLInputElement;
+                const file = input.files?.[0];
+                if (file) {
+                  await handleImageUpload(file, "banner");
+                  input.value = ""; // Reset input
+                }
+              }}
+            />
+            <p class="form-help">
+              Upload a banner image for your channel header (max 5MB).
+              Recommended size: 1920x200px
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="avatar-image">Channel Avatar Image</label>
+            {avatarImage.value && (
+              <div class="image-preview">
+                <img
+                  src={avatarImage.value}
+                  alt="Avatar preview"
+                  width="100"
+                  height="100"
+                  style="width: 100px; height: 100px; object-fit: cover; border-radius: 50%; margin-bottom: 10px;"
+                />
+              </div>
+            )}
+            <input
+              id="avatar-image"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              disabled={store.isSaving || isUploadingAvatar.value}
+              class="form-input"
+              onChange$={async (event) => {
+                const input = event.target as HTMLInputElement;
+                const file = input.files?.[0];
+                if (file) {
+                  await handleImageUpload(file, "avatar");
+                  input.value = ""; // Reset input
+                }
+              }}
+            />
+            <p class="form-help">
+              Upload an avatar image for your channel (max 5MB). Recommended
+              size: 200x200px
+            </p>
           </div>
 
           <div class="form-group">
