@@ -8,6 +8,8 @@ import {
 } from "@builder.io/qwik";
 import {
   checkAdminAuthServer,
+  checkSetupStatusServer,
+  performInitialSetupServer,
   loginAdminServer,
   logoutAdminServer,
 } from "~/lib/admin-auth-utils";
@@ -16,6 +18,7 @@ import styles from "./adminAuth.css?inline";
 interface AdminAuthStore {
   isAuthenticated: boolean;
   isLoading: boolean;
+  needsSetup: boolean;
   user: {
     username: string;
     isAdmin: boolean;
@@ -27,26 +30,83 @@ export default component$(() => {
   const authStore = useStore<AdminAuthStore>({
     isAuthenticated: false,
     isLoading: true,
+    needsSetup: false,
     user: null,
   });
 
   const username = useSignal("");
   const password = useSignal("");
+  const confirmPassword = useSignal("");
   const error = useSignal("");
   const isSubmitting = useSignal(false);
 
-  // Check authentication status on component load
+  // Check authentication status and setup status on component load
   useTask$(async () => {
     try {
-      const status = await checkAdminAuthServer();
-      authStore.isAuthenticated = status.isAuthenticated;
-      authStore.user = status.user;
+      // Check if setup is needed
+      const setupStatus = await checkSetupStatusServer();
+      authStore.needsSetup = setupStatus.needsSetup;
+
+      // If setup is complete, check auth status
+      if (!setupStatus.needsSetup) {
+        const status = await checkAdminAuthServer();
+        authStore.isAuthenticated = status.isAuthenticated;
+        authStore.user = status.user;
+      }
     } catch (error) {
       console.error("Auth check failed:", error);
       authStore.isAuthenticated = false;
       authStore.user = null;
     } finally {
       authStore.isLoading = false;
+    }
+  });
+
+  const handleInitialSetup = $(async () => {
+    error.value = "";
+
+    if (!username.value.trim() || !password.value) {
+      error.value = "Username and password are required";
+      return;
+    }
+
+    if (password.value !== confirmPassword.value) {
+      error.value = "Passwords do not match";
+      return;
+    }
+
+    if (username.value.trim().length < 3) {
+      error.value = "Username must be at least 3 characters long";
+      return;
+    }
+
+    if (password.value.length < 8) {
+      error.value = "Password must be at least 8 characters long";
+      return;
+    }
+
+    isSubmitting.value = true;
+
+    try {
+      const result = await performInitialSetupServer(
+        username.value.trim(),
+        password.value
+      );
+
+      if (result.success) {
+        authStore.isAuthenticated = true;
+        authStore.needsSetup = false;
+        authStore.user = result.data.user || null;
+        // Redirect to main page after successful setup
+        window.location.href = "/admin";
+      } else {
+        error.value = result.data.message || "Setup failed";
+      }
+    } catch (err) {
+      console.error("Setup error:", err);
+      error.value = "Setup failed";
+    } finally {
+      isSubmitting.value = false;
     }
   });
 
@@ -89,6 +149,7 @@ export default component$(() => {
       authStore.user = null;
       username.value = "";
       password.value = "";
+      confirmPassword.value = "";
       error.value = "";
 
       // Clear client-side cookie as additional measure
@@ -212,6 +273,83 @@ export default component$(() => {
     );
   }
 
+  // Show initial setup form if needed
+  if (authStore.needsSetup) {
+    return (
+      <div class="admin-container">
+        <div class="admin-card">
+          <header class="admin-login-header">
+            <h2>🚀 Initial Setup</h2>
+            <p class="admin-description">
+              Welcome! Set up your admin account to get started.
+            </p>
+          </header>
+
+          <form preventdefault:submit onSubmit$={handleInitialSetup}>
+            <div class="form-group">
+              <label for="admin-username">Username</label>
+              <input
+                id="admin-username"
+                type="text"
+                bind:value={username}
+                placeholder="Choose admin username (min 3 chars)"
+                required
+                minLength={3}
+                disabled={isSubmitting.value}
+                autocomplete="username"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="admin-password">Password</label>
+              <input
+                id="admin-password"
+                type="password"
+                bind:value={password}
+                placeholder="Choose admin password (min 8 chars)"
+                required
+                minLength={8}
+                disabled={isSubmitting.value}
+                autocomplete="new-password"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="admin-confirm-password">Confirm Password</label>
+              <input
+                id="admin-confirm-password"
+                type="password"
+                bind:value={confirmPassword}
+                placeholder="Confirm your password"
+                required
+                minLength={8}
+                disabled={isSubmitting.value}
+                autocomplete="new-password"
+              />
+            </div>
+
+            {error.value && <div class="error-message">{error.value}</div>}
+
+            <button
+              type="submit"
+              class="btn btn-primary btn-full btn-lg"
+              disabled={isSubmitting.value}
+            >
+              {isSubmitting.value ? "Setting up..." : "Complete Setup"}
+            </button>
+          </form>
+
+          <div class="admin-info">
+            <p class="info-text">
+              <strong>Note:</strong> Your credentials will be securely stored
+              and can be used for future logins.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div class="admin-container">
       <div class="admin-card">
@@ -262,8 +400,8 @@ export default component$(() => {
 
         <div class="admin-info">
           <p class="info-text">
-            <strong>Note:</strong> Admin credentials are configured through
-            environment variables. Check your Docker Compose configuration.
+            <strong>Note:</strong> Use the credentials you set up during initial
+            configuration.
           </p>
           <p>
             <a href="/" class="back-link">
