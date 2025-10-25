@@ -24,13 +24,13 @@ services:
       - NODE_ENV=production
       # Version info (APP_VERSION, BUILD_DATE, VCS_REF) is baked into the Docker image
       # at build time and should not be overridden here
+      # Admin credentials will be auto-generated on first run if not provided
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme123}
-      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this}
+      # JWT will be auto-generated securely on startup if not provided or insecure
+      - JWT_SECRET=${JWT_SECRET:-}
       - DOCKER_CONTAINER=true
       - IMAGE_NAME=${IMAGE_NAME:-itsashn/prometheus}
-    env_file:
-      - .env
     networks:
       cloudflareTunnel:
         ipv4_address: 172.18.0.7
