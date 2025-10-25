@@ -121,6 +121,9 @@ RUN echo "=== Verifying production files ===" && \
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/public/videos/hls /app/temp /app/tmp /app/data && \
     chmod -R 755 /app && \
+    chmod 777 /app/temp && \
+    chmod 777 /app/tmp && \
+    chmod 777 /app/data && \
     chmod 755 /app/scripts/*.js
 
 # Expose the application port

@@ -1,5 +1,12 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  accessSync,
+  constants,
+} from "fs";
 import { join } from "path";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
@@ -65,22 +72,78 @@ function saveSiteConfig(config: SiteConfig): void {
     const tempDir = join(process.cwd(), "temp");
     console.log("[Site Config] Temp directory path:", tempDir);
     console.log("[Site Config] Config file path:", CONFIG_FILE_PATH);
+    console.log("[Site Config] Current working directory:", process.cwd());
 
+    // Check if temp directory exists
     if (!existsSync(tempDir)) {
       console.log("[Site Config] Creating temp directory...");
-      mkdirSync(tempDir, { recursive: true });
+      try {
+        mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+        console.log("[Site Config] Temp directory created successfully");
+      } catch (mkdirError) {
+        console.error(
+          "[Site Config] Failed to create temp directory:",
+          mkdirError
+        );
+        throw new Error(
+          `Cannot create temp directory: ${mkdirError instanceof Error ? mkdirError.message : String(mkdirError)}`
+        );
+      }
+    } else {
+      console.log("[Site Config] Temp directory already exists");
+    }
+
+    // Verify directory is writable
+    try {
+      accessSync(tempDir, constants.W_OK);
+      console.log("[Site Config] Temp directory is writable");
+    } catch (accessError) {
+      console.error(
+        "[Site Config] Temp directory is not writable:",
+        accessError
+      );
+      throw new Error("Temp directory is not writable. Check permissions.");
     }
 
     config.lastUpdated = new Date().toISOString();
     const jsonString = JSON.stringify(config, null, 2);
     console.log("[Site Config] Writing config:", jsonString);
 
-    writeFileSync(CONFIG_FILE_PATH, jsonString, "utf-8");
-    console.log("[Site Config] Config file written successfully");
+    try {
+      writeFileSync(CONFIG_FILE_PATH, jsonString, {
+        encoding: "utf-8",
+        mode: 0o644,
+      });
+      console.log("[Site Config] Config file written successfully");
+    } catch (writeError) {
+      console.error("[Site Config] Failed to write config file:", writeError);
+      throw new Error(
+        `Cannot write config file: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+      );
+    }
 
     // Verify the file was written
     if (!existsSync(CONFIG_FILE_PATH)) {
-      throw new Error("Config file was not created");
+      throw new Error("Config file was not created after write operation");
+    }
+
+    // Verify file content
+    try {
+      const writtenContent = readFileSync(CONFIG_FILE_PATH, "utf-8");
+      console.log(
+        "[Site Config] Verification: File size:",
+        writtenContent.length,
+        "bytes"
+      );
+
+      // Verify JSON is valid
+      JSON.parse(writtenContent);
+      console.log("[Site Config] Verification: File content is valid JSON");
+    } catch (verifyError) {
+      console.error("[Site Config] File verification failed:", verifyError);
+      throw new Error(
+        `File written but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`
+      );
     }
   } catch (error) {
     console.error("[Site Config] Error saving site config:", error);
@@ -89,6 +152,7 @@ function saveSiteConfig(config: SiteConfig): void {
       stack: error instanceof Error ? error.stack : undefined,
       cwd: process.cwd(),
       tempDir: join(process.cwd(), "temp"),
+      configPath: CONFIG_FILE_PATH,
     });
     throw new Error(
       `Failed to save site config: ${error instanceof Error ? error.message : String(error)}`

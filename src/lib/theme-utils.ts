@@ -1,5 +1,12 @@
 import { server$ } from "@builder.io/qwik-city";
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  accessSync,
+  constants,
+} from "fs";
 import { join } from "path";
 
 const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
@@ -108,10 +115,13 @@ export const getCurrentThemeCSS = server$(async function () {
  */
 export const applyThemeTemplate = server$(async function (themeName: string) {
   try {
+    console.log("[Theme Utils] Applying theme:", themeName);
+    
     // Verify theme exists
     const themeContent = getThemeContent(themeName);
     
     if (!themeContent) {
+      console.error("[Theme Utils] Theme not found:", themeName);
       return {
         success: false,
         error: `Theme "${themeName}" not found`,
@@ -120,14 +130,45 @@ export const applyThemeTemplate = server$(async function (themeName: string) {
     
     // Load current config
     const config = loadSiteConfig();
+    console.log("[Theme Utils] Current config:", config);
     
     // Update config with new theme and clear custom CSS
     config.selectedTemplate = themeName;
     config.customCss = "";
     config.lastUpdated = new Date().toISOString();
     
+    // Ensure temp directory exists
+    const tempDir = join(process.cwd(), "temp");
+    if (!existsSync(tempDir)) {
+      console.log("[Theme Utils] Creating temp directory...");
+      mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+    }
+    
+    // Verify directory is writable
+    try {
+      accessSync(tempDir, constants.W_OK);
+    } catch (accessError) {
+      console.error("[Theme Utils] Temp directory not writable:", accessError);
+      return {
+        success: false,
+        error: "Cannot write to temp directory. Check permissions.",
+      };
+    }
+    
     // Save updated config
-    writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2));
+    try {
+      writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2), {
+        encoding: "utf-8",
+        mode: 0o644,
+      });
+      console.log("[Theme Utils] Config saved successfully");
+    } catch (writeError) {
+      console.error("[Theme Utils] Failed to write config:", writeError);
+      return {
+        success: false,
+        error: `Failed to save config: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+      };
+    }
     
     return {
       success: true,
@@ -137,7 +178,7 @@ export const applyThemeTemplate = server$(async function (themeName: string) {
     console.error("Error applying theme template:", error);
     return {
       success: false,
-      error: "Failed to apply theme",
+      error: `Failed to apply theme: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 });
@@ -147,6 +188,8 @@ export const applyThemeTemplate = server$(async function (themeName: string) {
  */
 export const applyCustomCSS = server$(async function (cssContent: string) {
   try {
+    console.log("[Theme Utils] Applying custom CSS");
+    
     // Load current config
     const config = loadSiteConfig();
     
@@ -155,8 +198,38 @@ export const applyCustomCSS = server$(async function (cssContent: string) {
     config.selectedTemplate = ""; // Clear template selection when using custom CSS
     config.lastUpdated = new Date().toISOString();
     
+    // Ensure temp directory exists
+    const tempDir = join(process.cwd(), "temp");
+    if (!existsSync(tempDir)) {
+      console.log("[Theme Utils] Creating temp directory...");
+      mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+    }
+    
+    // Verify directory is writable
+    try {
+      accessSync(tempDir, constants.W_OK);
+    } catch (accessError) {
+      console.error("[Theme Utils] Temp directory not writable:", accessError);
+      return {
+        success: false,
+        error: "Cannot write to temp directory. Check permissions.",
+      };
+    }
+    
     // Save updated config
-    writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2));
+    try {
+      writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2), {
+        encoding: "utf-8",
+        mode: 0o644,
+      });
+      console.log("[Theme Utils] Config saved successfully");
+    } catch (writeError) {
+      console.error("[Theme Utils] Failed to write config:", writeError);
+      return {
+        success: false,
+        error: `Failed to save config: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
+      };
+    }
     
     return {
       success: true,
@@ -166,7 +239,7 @@ export const applyCustomCSS = server$(async function (cssContent: string) {
     console.error("Error applying custom CSS:", error);
     return {
       success: false,
-      error: "Failed to apply custom CSS",
+      error: `Failed to apply custom CSS: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 });
