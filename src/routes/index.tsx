@@ -33,6 +33,8 @@ export default component$(() => {
   const channelDescription =
     siteConfig.value?.channelDescription ||
     "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.";
+  const bannerImage = siteConfig.value?.bannerImage || "";
+  const avatarImage = siteConfig.value?.avatarImage || "";
 
   return (
     <div class="channel-page">
@@ -42,6 +44,8 @@ export default component$(() => {
         videoCount={videoCount.value}
         isAuthenticated={auth.value.isAuthenticated}
         activeTab="home"
+        bannerImage={bannerImage}
+        avatarImage={avatarImage}
       />
 
       <div class="channel-content">
@@ -91,32 +95,6 @@ export default component$(() => {
               showMetadata={true}
               isAdmin={auth.value.isAuthenticated}
             />
-          </section>
-
-          <section class="about-section">
-            <h3 class="section-title">About This Channel</h3>
-            <div class="about-content">
-              <div class="about-card">
-                <span class="about-icon">🚫</span>
-                <h4>Ad-Free Experience</h4>
-                <p>Enjoy content without interruptions or advertisements</p>
-              </div>
-              <div class="about-card">
-                <span class="about-icon">🔒</span>
-                <h4>Private & Secure</h4>
-                <p>Self-hosted platform with complete data control</p>
-              </div>
-              <div class="about-card">
-                <span class="about-icon">⚡</span>
-                <h4>Fast Streaming</h4>
-                <p>HLS adaptive streaming for smooth playback</p>
-              </div>
-              <div class="about-card">
-                <span class="about-icon">📱</span>
-                <h4>Mobile Ready</h4>
-                <p>Watch anywhere on any device</p>
-              </div>
-            </div>
           </section>
         </div>
       </div>

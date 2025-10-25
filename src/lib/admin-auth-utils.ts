@@ -1,6 +1,27 @@
 import { server$ } from "@builder.io/qwik-city";
 
 /**
+ * Check if initial setup is required
+ */
+export const checkSetupStatusServer = server$(async function () {
+  try {
+    const { isSetupComplete } = await import("~/lib/initial-setup");
+    const setupComplete = await isSetupComplete();
+    
+    return {
+      setupComplete,
+      needsSetup: !setupComplete,
+    };
+  } catch (error) {
+    console.error("Setup check error:", error);
+    return {
+      setupComplete: false,
+      needsSetup: true,
+    };
+  }
+});
+
+/**
  * Reusable server function to check admin auth status without network calls
  */
 export const checkAdminAuthServer = server$(async function () {
@@ -42,6 +63,72 @@ export const checkAdminAuthServer = server$(async function () {
 });
 
 /**
+ * Perform initial setup with first-time credentials
+ */
+export const performInitialSetupServer = server$(async function (
+  username: string,
+  password: string
+) {
+  try {
+    const { isSetupComplete, saveInitialCredentials, verifyStoredCredentials } = await import("~/lib/initial-setup");
+    const { AdminAuthService, ADMIN_COOKIE_NAME, COOKIE_OPTIONS } = await import("~/lib/auth");
+
+    // Check if setup is already complete
+    const setupComplete = await isSetupComplete();
+    if (setupComplete) {
+      return {
+        success: false,
+        data: { message: "Setup already completed" }
+      };
+    }
+
+    if (!username || !password) {
+      return {
+        success: false,
+        data: { message: "Username and password are required" }
+      };
+    }
+
+    // Save the initial credentials
+    await saveInitialCredentials(username.trim(), password);
+
+    // Verify the saved credentials work
+    const isValid = await verifyStoredCredentials(username.trim(), password);
+    
+    if (!isValid) {
+      return {
+        success: false,
+        data: { message: "Failed to verify saved credentials" }
+      };
+    }
+
+    // Generate JWT token
+    const token = AdminAuthService.generateToken({
+      username: username.trim(),
+      isAdmin: true,
+    });
+
+    // Set secure HTTP-only cookie
+    this.cookie.set(ADMIN_COOKIE_NAME, token, COOKIE_OPTIONS);
+
+    return {
+      success: true,
+      data: {
+        message: "Initial setup completed successfully",
+        user: { username: username.trim(), isAdmin: true },
+      }
+    };
+  } catch (error) {
+    console.error("Initial setup error:", error);
+    const message = error instanceof Error ? error.message : "Setup failed";
+    return { 
+      success: false, 
+      data: { message } 
+    };
+  }
+});
+
+/**
  * Reusable server function for admin login without network calls
  */
 export const loginAdminServer = server$(async function (
@@ -50,6 +137,7 @@ export const loginAdminServer = server$(async function (
 ) {
   try {
     // Import the auth service directly instead of making HTTP requests
+    const { verifyStoredCredentials } = await import("~/lib/initial-setup");
     const { AdminAuthService, ADMIN_COOKIE_NAME, COOKIE_OPTIONS } = await import("~/lib/auth");
 
     if (!username || !password) {
@@ -59,11 +147,8 @@ export const loginAdminServer = server$(async function (
       };
     }
 
-    // Verify admin credentials directly
-    const isValid = await AdminAuthService.verifyAdminCredentials(
-      username.trim(),
-      password
-    );
+    // Verify admin credentials using stored credentials
+    const isValid = await verifyStoredCredentials(username.trim(), password);
 
     if (!isValid) {
       return {
@@ -85,7 +170,7 @@ export const loginAdminServer = server$(async function (
       success: true,
       data: {
         message: "Admin login successful",
-        user: AdminAuthService.getAdminUser(),
+        user: { username: username.trim(), isAdmin: true },
       }
     };
   } catch (error) {

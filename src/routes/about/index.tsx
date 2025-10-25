@@ -16,6 +16,8 @@ interface SiteConfig {
   channelDescription: string;
   aboutText?: string;
   lastUpdated: string;
+  bannerImage?: string;
+  avatarImage?: string;
 }
 
 export default component$(() => {
@@ -61,6 +63,8 @@ export default component$(() => {
   const aboutText =
     siteStore.config?.aboutText ||
     "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control. Enjoy ad-free streaming with adaptive quality based on your connection speed.";
+  const bannerImage = siteStore.config?.bannerImage || "";
+  const avatarImage = siteStore.config?.avatarImage || "";
 
   return (
     <div class="about-page">
@@ -70,6 +74,8 @@ export default component$(() => {
         videoCount={videoCount.value}
         isAuthenticated={authStore.isAuthenticated}
         activeTab="about"
+        bannerImage={bannerImage}
+        avatarImage={avatarImage}
       />
       <div class="about-container">
         <main class="about-content">

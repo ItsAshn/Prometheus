@@ -16,6 +16,8 @@ export const loadSiteConfigServer = server$(async function () {
       customCss: string;
       lastUpdated: string;
       selectedTemplate?: string;
+      bannerImage?: string;
+      avatarImage?: string;
     }
 
     // Default configuration
@@ -48,6 +50,8 @@ export const loadSiteConfigServer = server$(async function () {
       aboutText: config.aboutText,
       lastUpdated: config.lastUpdated,
       selectedTemplate: config.selectedTemplate,
+      bannerImage: config.bannerImage || "",
+      avatarImage: config.avatarImage || "",
     };
   } catch (error) {
     console.error("Error loading site config:", error);

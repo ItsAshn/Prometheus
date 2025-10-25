@@ -16,6 +16,8 @@ interface SiteConfig {
   channelName: string;
   channelDescription: string;
   lastUpdated: string;
+  bannerImage?: string;
+  avatarImage?: string;
 }
 
 export default component$(() => {
@@ -58,6 +60,8 @@ export default component$(() => {
   const channelDescription =
     siteStore.config?.channelDescription ||
     "Welcome to my self-hosted video streaming platform.";
+  const bannerImage = siteStore.config?.bannerImage || "";
+  const avatarImage = siteStore.config?.avatarImage || "";
 
   return (
     <div class="public-videos-page">
@@ -67,6 +71,8 @@ export default component$(() => {
         videoCount={videoCount.value}
         isAuthenticated={authStore.isAuthenticated}
         activeTab="videos"
+        bannerImage={bannerImage}
+        avatarImage={avatarImage}
       />
       <div class="site-container">
         <main class="site-content">

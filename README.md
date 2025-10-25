@@ -32,7 +32,7 @@ A self-hosted video platform that gives you complete control over your content. 
 ## 🚀 Quick Start
 
 > 📖 **For complete deployment instructions with easy updates, see [DEPLOYMENT.md](DEPLOYMENT.md)**  
-> 🎯 **First-time admin? See [ADMIN_SETUP_GUIDE.md](ADMIN_SETUP_GUIDE.md) for the easiest setup!**
+> 🎯 **First-time setup is now easier than ever!** Just run the app and set up your admin credentials through the web interface.
 
 ### Docker (Recommended) - Zero Configuration! ⭐
 
@@ -44,12 +44,15 @@ cd Prometheus/qwik-app
 docker-compose up -d
 ```
 
-**That's it!** JWT secrets auto-generate on build. Default login: `admin` / `changeme123`
+**That's it!**
 
 **→ Access at:** http://localhost:3000  
+**👤 First-time setup:** Visit `/admin` and create your admin account through the web interface  
 **🔄 Updates:** Use the built-in admin panel to update from GitHub releases - no Git required!
 
-### With Custom Configuration
+### With Custom Configuration (Optional)
+
+You can still pre-configure credentials if you prefer:
 
 ```bash
 git clone https://github.com/ItsAshn/Prometheus.git
@@ -69,11 +72,11 @@ git clone https://github.com/ItsAshn/Prometheus.git
 cd Prometheus/qwik-app
 pnpm install
 
-# Option 1: Interactive setup (easiest)
-pnpm setup
+# Option 1: Zero config - just run and setup via web!
+pnpm dev  # JWT auto-generates, visit /admin to setup
 
-# Option 2: Zero config - just run!
-pnpm dev  # JWT auto-generates on startup
+# Option 2: Interactive setup (pre-configure)
+pnpm setup
 
 # Option 3: Manual .env configuration
 cp example.env .env
@@ -85,15 +88,17 @@ pnpm dev
 
 ### Configuration Made Easy
 
-**No configuration needed!** JWT secrets auto-generate during build and startup.
+**New! Web-based First-Time Setup:**
 
-**Want custom credentials?** Run the interactive setup:
+- No configuration files needed
+- Just run the app and visit `/admin`
+- Create your admin account through a secure web form
+- Credentials are securely stored and persisted
 
-```bash
-npm run setup
-```
+**Still prefer the old way?** You can still use:
 
-**Manual configuration:** Edit `.env` file
+- Interactive setup: `npm run setup`
+- Manual `.env` configuration
 
 ```env
 ADMIN_USERNAME=your-username
