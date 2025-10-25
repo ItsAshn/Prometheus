@@ -69,16 +69,20 @@ ARG VCS_REF
 ENV NODE_ENV=production \
     APP_VERSION=$APP_VERSION \
     BUILD_DATE=$BUILD_DATE \
-    VCS_REF=$VCS_REF
+    VCS_REF=$VCS_REF \
+    DOCKER_CONTAINER=true
 
-# Add labels for metadata
+# Add labels for metadata (these persist in the image and can be inspected)
 LABEL org.opencontainers.image.title="Prometheus Video Platform" \
       org.opencontainers.image.description="Self-hosted video streaming platform built with Qwik" \
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.source="https://github.com/ItsAshn/Prometheus" \
-      org.opencontainers.image.authors="ItsAshn"
+      org.opencontainers.image.authors="ItsAshn" \
+      org.opencontainers.image.vendor="ItsAshn" \
+      org.opencontainers.image.url="https://github.com/ItsAshn/Prometheus" \
+      org.opencontainers.image.documentation="https://github.com/ItsAshn/Prometheus/blob/master/README.md"
 
 WORKDIR /app
 
