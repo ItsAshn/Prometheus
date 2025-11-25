@@ -1,67 +1,65 @@
 import {
   component$,
   useStylesScoped$,
-  useStore,
-  useTask$,
   useSignal,
+  useVisibleTask$,
+  $,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
-import { loadSiteConfigServer, loadVideosServer } from "~/lib/data-loaders";
+import { useLocation } from "@builder.io/qwik-city";
+import { loadVideosServer } from "~/lib/data-loaders";
 import styles from "./index.css?inline";
 import VideoList from "~/components/video/VideoList";
 import { ChannelHeader } from "~/components/channel/channel-header";
-
-interface SiteConfig {
-  channelName: string;
-  channelDescription: string;
-  lastUpdated: string;
-  bannerImage?: string;
-  avatarImage?: string;
-}
+import { SearchBar } from "~/components/search/search-bar";
+import {
+  VideoFilters,
+  type SortOption,
+} from "~/components/video-filters/video-filters";
+import { useAuthLoader, useSiteConfigLoader } from "../layout";
 
 export default component$(() => {
   useStylesScoped$(styles);
 
-  const authStore = useStore({
-    isAuthenticated: false,
-    isLoading: true,
-    username: "",
-  });
-
-  const siteStore = useStore({
-    config: null as SiteConfig | null,
-    isLoadingConfig: true,
-  });
+  // Use shared loaders from layout instead of re-fetching
+  const auth = useAuthLoader();
+  const siteConfig = useSiteConfigLoader();
+  const location = useLocation();
 
   const videoCount = useSignal(0);
+  const searchQuery = useSignal("");
+  const sortBy = useSignal<SortOption>("newest");
 
-  // Check authentication status and load site config on component load
-  useTask$(async () => {
-    const [authStatus, config, videos] = await Promise.all([
-      checkAdminAuthServer(),
-      loadSiteConfigServer(),
-      loadVideosServer(),
-    ]);
-
-    authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.user?.username || "";
-    authStore.isLoading = false;
-
-    if (config) {
-      siteStore.config = config;
-    }
-    siteStore.isLoadingConfig = false;
-
-    videoCount.value = videos?.length || 0;
+  // Handlers for filter changes
+  const handleSortChange$ = $((value: string) => {
+    sortBy.value = value as SortOption;
   });
 
-  const channelName = siteStore.config?.channelName || "Your Video Channel";
+  const handleResetFilters$ = $(() => {
+    sortBy.value = "newest";
+  });
+
+  // Load video count and search query on client side
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    const videos = await loadVideosServer();
+    videoCount.value = videos?.length || 0;
+
+    // Get search query from URL
+    const urlParams = new URLSearchParams(location.url.search);
+    const query = urlParams.get("q");
+    if (query) {
+      searchQuery.value = query;
+    }
+  });
+
+  // Use site config for display, with fallbacks
+  const channelName = siteConfig.value?.channelName || "Your Video Channel";
   const channelDescription =
-    siteStore.config?.channelDescription ||
+    siteConfig.value?.channelDescription ||
     "Welcome to my self-hosted video streaming platform.";
-  const bannerImage = siteStore.config?.bannerImage || "";
-  const avatarImage = siteStore.config?.avatarImage || "";
+  const bannerImage = siteConfig.value?.bannerImage || "";
+  const avatarImage = siteConfig.value?.avatarImage || "";
 
   return (
     <div class="public-videos-page">
@@ -69,30 +67,57 @@ export default component$(() => {
         channelName={channelName}
         channelDescription={channelDescription}
         videoCount={videoCount.value}
-        isAuthenticated={authStore.isAuthenticated}
+        isAuthenticated={auth.value.isAuthenticated}
         activeTab="videos"
         bannerImage={bannerImage}
         avatarImage={avatarImage}
       />
       <div class="site-container">
         <main class="site-content">
+          {/* Mobile Search Bar */}
+          <div class="mobile-search-section">
+            <SearchBar placeholder="Search videos..." variant="page" />
+          </div>
+
           <div class="videos-intro">
             <h2>🎬 Video Collection</h2>
             <p>
               Enjoy high-quality streaming with adaptive bitrate delivery. All
               videos are automatically optimized for your device and connection.
             </p>
+            {searchQuery.value && (
+              <p class="search-results-text">
+                Search results for: <strong>"{searchQuery.value}"</strong>
+              </p>
+            )}
           </div>
 
-          <VideoList
-            displayMode="grid"
-            showTitles={true}
-            enablePlayer={false}
-            showActions={authStore.isAuthenticated}
-            showMetadata={true}
-            sortBy="newest"
-            isAdmin={authStore.isAuthenticated}
-          />
+          <div class="videos-layout">
+            {/* Filter Sidebar */}
+            <aside class="videos-sidebar">
+              <VideoFilters
+                currentSort={sortBy.value}
+                onSortChange$={handleSortChange$}
+                onResetFilters$={handleResetFilters$}
+              />
+            </aside>
+
+            {/* Video Grid */}
+            <div class="videos-main">
+              <VideoList
+                displayMode="grid"
+                showTitles={true}
+                enablePlayer={false}
+                showActions={auth.value.isAuthenticated}
+                showMetadata={true}
+                sortBy={sortBy.value}
+                isAdmin={auth.value.isAuthenticated}
+                searchQuery={searchQuery.value}
+                enablePagination={true}
+                itemsPerPage={12}
+              />
+            </div>
+          </div>
         </main>
       </div>
     </div>

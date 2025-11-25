@@ -20,14 +20,19 @@ export interface VideoListProps {
   showMetadata?: boolean; // Show video metadata (duration, size, etc.)
   sortBy?: "newest" | "oldest" | "title" | "duration"; // Sort order
   className?: string; // Custom CSS class
+  searchQuery?: string; // Search filter
+  enablePagination?: boolean; // Enable pagination with "Load More" button
+  itemsPerPage?: number; // Number of items to show per page (default: 12)
 }
 
 export default component$<VideoListProps>((props) => {
   useStylesScoped$(styles);
   const videos = useSignal<VideoMetadata[]>([]);
+  const allVideos = useSignal<VideoMetadata[]>([]); // Store all filtered videos
   const isLoading = useSignal(true);
   const error = useSignal("");
   const selectedVideo = useSignal<VideoMetadata | null>(null);
+  const currentPage = useSignal(1);
 
   // Extract props to avoid serialization issues
   const {
@@ -40,6 +45,9 @@ export default component$<VideoListProps>((props) => {
     showMetadata = true,
     sortBy = "newest",
     className = "",
+    searchQuery = "",
+    enablePagination = false,
+    itemsPerPage = 12,
   } = props;
 
   const loadVideos = $(async () => {
@@ -49,6 +57,14 @@ export default component$<VideoListProps>((props) => {
 
       if (result) {
         let videoList = result;
+
+        // Apply search filter if query exists
+        if (searchQuery && searchQuery.trim()) {
+          const query = searchQuery.toLowerCase().trim();
+          videoList = videoList.filter((video: VideoMetadata) =>
+            video.title.toLowerCase().includes(query)
+          );
+        }
 
         // Apply sorting
         switch (sortBy) {
@@ -78,8 +94,17 @@ export default component$<VideoListProps>((props) => {
             break;
         }
 
-        // Apply count limit if specified
-        if (count && count > 0) {
+        // Store all videos for pagination
+        allVideos.value = videoList;
+
+        // Apply pagination or count limit
+        if (enablePagination) {
+          // Show items based on current page
+          const startIndex = 0;
+          const endIndex = currentPage.value * itemsPerPage;
+          videoList = videoList.slice(startIndex, endIndex);
+        } else if (count && count > 0) {
+          // Apply count limit if specified (no pagination)
           videoList = videoList.slice(0, count);
         }
 
@@ -94,6 +119,11 @@ export default component$<VideoListProps>((props) => {
     } finally {
       isLoading.value = false;
     }
+  });
+
+  const loadMore = $(() => {
+    currentPage.value += 1;
+    loadVideos();
   });
 
   const deleteVideo = $(async (videoId: string) => {
@@ -237,12 +267,18 @@ export default component$<VideoListProps>((props) => {
           />
         </div>
       ) : (
-        <div class={`video-${displayMode}`}>
+        <div
+          class={`video-${displayMode}`}
+          role="list"
+          aria-label="Video collection"
+        >
           {videos.value.map((video) => (
-            <div key={video.id} class="video-card">
-              <div
+            <article key={video.id} class="video-card" role="listitem">
+              <button
                 class="video-thumbnail"
                 onClick$={() => handleVideoSelect(video)}
+                aria-label={`Play ${video.title}`}
+                type="button"
                 style={
                   video.thumbnail
                     ? `background-image: url('${video.thumbnail}')`
@@ -251,28 +287,44 @@ export default component$<VideoListProps>((props) => {
               >
                 {!video.thumbnail && (
                   <div class="thumbnail-placeholder">
-                    <span class="placeholder-icon">🎬</span>
+                    <span class="placeholder-icon" aria-hidden="true">
+                      🎬
+                    </span>
                   </div>
                 )}
-                <div class="play-overlay">
+                <div class="play-overlay" aria-hidden="true">
                   <div class="play-icon">▶️</div>
                 </div>
                 {showMetadata && (
-                  <div class="video-duration">
+                  <div
+                    class="video-duration"
+                    aria-label={`Duration: ${formatDuration(video.duration)}`}
+                  >
                     {formatDuration(video.duration)}
                   </div>
                 )}
-              </div>
+              </button>
 
               <div class="video-info">
                 {showTitles && <h4 class="video-title">{video.title}</h4>}
                 {showMetadata && (
-                  <div class="video-meta">
-                    <span class="video-resolution">{video.resolution}</span>
-                    <span class="video-size">
+                  <div class="video-meta" aria-label="Video metadata">
+                    <span
+                      class="video-resolution"
+                      aria-label={`Resolution: ${video.resolution}`}
+                    >
+                      {video.resolution}
+                    </span>
+                    <span
+                      class="video-size"
+                      aria-label={`File size: ${formatFileSize(video.fileSize)}`}
+                    >
                       {formatFileSize(video.fileSize)}
                     </span>
-                    <span class="video-date">
+                    <span
+                      class="video-date"
+                      aria-label={`Upload date: ${new Date(video.createdAt).toLocaleDateString()}`}
+                    >
                       {new Date(video.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -284,6 +336,7 @@ export default component$<VideoListProps>((props) => {
                   <button
                     onClick$={() => handleVideoSelect(video)}
                     class="btn btn-primary btn-sm flex-1"
+                    aria-label={`${enablePlayer ? "Play" : "View"} ${video.title}`}
                   >
                     {enablePlayer ? "Play" : "View"}
                   </button>
@@ -291,16 +344,32 @@ export default component$<VideoListProps>((props) => {
                     <button
                       onClick$={() => deleteVideo(video.id)}
                       class="btn btn-destructive btn-sm"
+                      aria-label={`Delete ${video.title}`}
                     >
                       Delete
                     </button>
                   )}
                 </div>
               )}
-            </div>
+            </article>
           ))}
         </div>
       )}
+
+      {/* Load More Button for Pagination */}
+      {enablePagination &&
+        !selectedVideo.value &&
+        videos.value.length < allVideos.value.length && (
+          <div class="pagination-container">
+            <button onClick$={loadMore} class="btn btn-primary load-more-btn">
+              Load More Videos ({allVideos.value.length - videos.value.length}{" "}
+              remaining)
+            </button>
+            <p class="pagination-info">
+              Showing {videos.value.length} of {allVideos.value.length} videos
+            </p>
+          </div>
+        )}
     </div>
   );
 });

@@ -217,6 +217,9 @@
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
+  border: none;
+  padding: 0;
+  transition: transform 0.2s ease;
 }
 
 .video-thumbnail:hover {
@@ -225,6 +228,12 @@
     var(--color-primary-hover),
     var(--color-primary)
   );
+  transform: scale(1.02);
+}
+
+.video-thumbnail:focus {
+  outline: 3px solid var(--color-ring);
+  outline-offset: 2px;
 }
 
 /* Thumbnail placeholder for videos without custom thumbnails */
@@ -413,6 +422,34 @@
 
 .flex-1 {
   flex: 1;
+}
+
+/* Pagination Container */
+.pagination-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-8);
+  padding: var(--spacing-6);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.load-more-btn {
+  min-width: 250px;
+  padding: var(--spacing-3) var(--spacing-8);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.pagination-info {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-muted-foreground);
+  font-weight: var(--font-weight-medium);
 }
 
 /* Responsive Design */

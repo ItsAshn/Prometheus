@@ -1,70 +1,41 @@
 import {
   component$,
   useStylesScoped$,
-  useStore,
-  useTask$,
   useSignal,
+  useVisibleTask$,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
-import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
-import { loadSiteConfigServer, loadVideosServer } from "~/lib/data-loaders";
+import { loadVideosServer } from "~/lib/data-loaders";
 import styles from "./index.css?inline";
 import { ChannelHeader } from "~/components/channel/channel-header";
-
-interface SiteConfig {
-  channelName: string;
-  channelDescription: string;
-  aboutText?: string;
-  lastUpdated: string;
-  bannerImage?: string;
-  avatarImage?: string;
-}
+import { useAuthLoader, useSiteConfigLoader } from "../layout";
 
 export default component$(() => {
   useStylesScoped$(styles);
 
-  const authStore = useStore({
-    isAuthenticated: false,
-    isLoading: true,
-    username: "",
-  });
-
-  const siteStore = useStore({
-    config: null as SiteConfig | null,
-    isLoadingConfig: true,
-  });
+  // Use shared loaders from layout instead of re-fetching
+  const auth = useAuthLoader();
+  const siteConfig = useSiteConfigLoader();
 
   const videoCount = useSignal(0);
 
-  // Check authentication status and load site config on component load
-  useTask$(async () => {
-    const [authStatus, config, videos] = await Promise.all([
-      checkAdminAuthServer(),
-      loadSiteConfigServer(),
-      loadVideosServer(),
-    ]);
-
-    authStore.isAuthenticated = authStatus.isAuthenticated;
-    authStore.username = authStatus.user?.username || "";
-    authStore.isLoading = false;
-
-    if (config) {
-      siteStore.config = config;
-    }
-    siteStore.isLoadingConfig = false;
-
+  // Load video count on client side only
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(async () => {
+    const videos = await loadVideosServer();
     videoCount.value = videos?.length || 0;
   });
 
-  const channelName = siteStore.config?.channelName || "Your Video Channel";
+  // Use site config for display, with fallbacks
+  const channelName = siteConfig.value?.channelName || "Your Video Channel";
   const channelDescription =
-    siteStore.config?.channelDescription ||
+    siteConfig.value?.channelDescription ||
     "Welcome to my self-hosted video streaming platform.";
   const aboutText =
-    siteStore.config?.aboutText ||
+    siteConfig.value?.aboutText ||
     "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control. Enjoy ad-free streaming with adaptive quality based on your connection speed.";
-  const bannerImage = siteStore.config?.bannerImage || "";
-  const avatarImage = siteStore.config?.avatarImage || "";
+  const bannerImage = siteConfig.value?.bannerImage || "";
+  const avatarImage = siteConfig.value?.avatarImage || "";
 
   return (
     <div class="about-page">
@@ -72,7 +43,7 @@ export default component$(() => {
         channelName={channelName}
         channelDescription={channelDescription}
         videoCount={videoCount.value}
-        isAuthenticated={authStore.isAuthenticated}
+        isAuthenticated={auth.value.isAuthenticated}
         activeTab="about"
         bannerImage={bannerImage}
         avatarImage={avatarImage}
@@ -84,18 +55,11 @@ export default component$(() => {
           </div>
 
           <div class="about-text-section">
-            {siteStore.isLoadingConfig ? (
-              <div class="loading-state">
-                <div class="loading-spinner"></div>
-                <p>Loading about information...</p>
-              </div>
-            ) : (
-              <div class="about-text">
-                {aboutText.split("\n").map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))}
-              </div>
-            )}
+            <div class="about-text">
+              {aboutText.split("\n").map((paragraph, index) => (
+                <p key={index}>{paragraph}</p>
+              ))}
+            </div>
           </div>
 
           <div class="about-features">
@@ -136,7 +100,7 @@ export default component$(() => {
             </div>
           </div>
 
-          {authStore.isAuthenticated && (
+          {auth.value.isAuthenticated && (
             <div class="admin-info-box">
               <h4>👤 Admin Access</h4>
               <p>

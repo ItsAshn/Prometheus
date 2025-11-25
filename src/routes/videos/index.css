@@ -25,6 +25,12 @@
   padding-bottom: var(--spacing-12);
 }
 
+/* Mobile Search Section */
+.mobile-search-section {
+  display: none;
+  margin-bottom: var(--spacing-6);
+}
+
 /* Videos Introduction */
 .videos-intro {
   text-align: center;
@@ -89,6 +95,35 @@
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+}
+
+.search-results-text {
+  margin-top: var(--spacing-4) !important;
+  font-size: var(--font-size-base) !important;
+  color: var(--color-primary) !important;
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.search-results-text strong {
+  color: var(--color-foreground);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Videos Layout with Sidebar */
+.videos-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--spacing-8);
+  align-items: start;
+}
+
+.videos-sidebar {
+  position: sticky;
+  top: 80px;
+}
+
+.videos-main {
+  min-width: 0;
 }
 
 /* Video List Container */
@@ -397,6 +432,14 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
+  .videos-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .videos-sidebar {
+    position: static;
+  }
+
   .video-grid {
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--spacing-6);
@@ -406,6 +449,11 @@
 @media (max-width: 768px) {
   .site-container {
     padding: var(--spacing-4);
+  }
+
+  /* Show mobile search on tablets and below */
+  .mobile-search-section {
+    display: block;
   }
 
   .videos-intro {
