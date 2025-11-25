@@ -3,10 +3,12 @@ import {
   useStylesScoped$,
   useSignal,
   useVisibleTask$,
+  useTask$,
   $,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { useLocation } from "@builder.io/qwik-city";
+import { LuClapperboard } from "@qwikest/icons/lucide";
 import { loadVideosServer } from "~/lib/data-loaders";
 import styles from "./index.css?inline";
 import VideoList from "~/components/video/VideoList";
@@ -37,20 +39,22 @@ export default component$(() => {
 
   const handleResetFilters$ = $(() => {
     sortBy.value = "newest";
+    searchQuery.value = "";
   });
 
-  // Load video count and search query on client side
+  // Track URL changes to update search query reactively
+  useTask$(({ track }) => {
+    const url = track(() => location.url);
+    const urlParams = new URLSearchParams(url.search);
+    const query = urlParams.get("q");
+    searchQuery.value = query || "";
+  });
+
+  // Load video count on client side
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async () => {
     const videos = await loadVideosServer();
     videoCount.value = videos?.length || 0;
-
-    // Get search query from URL
-    const urlParams = new URLSearchParams(location.url.search);
-    const query = urlParams.get("q");
-    if (query) {
-      searchQuery.value = query;
-    }
   });
 
   // Use site config for display, with fallbacks
@@ -80,7 +84,9 @@ export default component$(() => {
           </div>
 
           <div class="videos-intro">
-            <h2>🎬 Video Collection</h2>
+            <h2>
+              <LuClapperboard /> Video Collection
+            </h2>
             <p>
               Enjoy high-quality streaming with adaptive bitrate delivery. All
               videos are automatically optimized for your device and connection.

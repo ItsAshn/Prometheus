@@ -7,6 +7,15 @@ import {
   useStylesScoped$,
 } from "@builder.io/qwik";
 import {
+  LuSlidersHorizontal,
+  LuBarChart,
+  LuVideo,
+  LuSettings,
+  LuLink,
+  LuRocket,
+  LuLock,
+} from "@qwikest/icons/lucide";
+import {
   checkAdminAuthServer,
   checkSetupStatusServer,
   performInitialSetupServer,
@@ -198,7 +207,9 @@ export default component$(() => {
           <main class="admin-content">
             <div class="admin-grid">
               <div class="admin-card">
-                <h3>🎛️ System Status</h3>
+                <h3>
+                  <LuSlidersHorizontal /> System Status
+                </h3>
                 <p>Your self-hosted application is running successfully.</p>
                 <p>
                   Admin access: <span class="status-active">Active</span>
@@ -206,13 +217,17 @@ export default component$(() => {
               </div>
 
               <div class="admin-card">
-                <h3>📊 Analytics</h3>
+                <h3>
+                  <LuBarChart /> Analytics
+                </h3>
                 <p>Public site is accessible to all visitors.</p>
                 <p>Admin area is secured and protected.</p>
               </div>
 
               <div class="admin-card">
-                <h3>📹 Video Management</h3>
+                <h3>
+                  <LuVideo /> Video Management
+                </h3>
                 <p>Upload and manage videos for HLS streaming.</p>
                 <p>Convert videos to adaptive streaming format.</p>
                 <p>
@@ -223,7 +238,9 @@ export default component$(() => {
               </div>
 
               <div class="admin-card">
-                <h3>⚙️ Site Configuration</h3>
+                <h3>
+                  <LuSettings /> Site Configuration
+                </h3>
                 <p>Customize your channel name, description, and styling.</p>
                 <p>Upload custom CSS to personalize your site appearance.</p>
                 <p>
@@ -234,7 +251,9 @@ export default component$(() => {
               </div>
 
               <div class="admin-card">
-                <h3>⚙️ System Configuration</h3>
+                <h3>
+                  <LuSettings /> System Configuration
+                </h3>
                 <p>
                   Admin credentials are configured via environment variables.
                 </p>
@@ -242,7 +261,9 @@ export default component$(() => {
               </div>
 
               <div class="admin-card">
-                <h3>� System Updates</h3>
+                <h3>
+                  <LuSettings /> System Updates
+                </h3>
                 <p>
                   Pull the latest version and restart your Docker container.
                 </p>
@@ -258,7 +279,9 @@ export default component$(() => {
               </div>
 
               <div class="admin-card">
-                <h3>�🔗 Quick Links</h3>
+                <h3>
+                  <LuLink /> Quick Links
+                </h3>
                 <p>
                   <a href="/" class="admin-link">
                     ← Back to Public Site
@@ -279,7 +302,9 @@ export default component$(() => {
       <div class="admin-container">
         <div class="admin-card">
           <header class="admin-login-header">
-            <h2>🚀 Initial Setup</h2>
+            <h2>
+              <LuRocket /> Initial Setup
+            </h2>
             <p class="admin-description">
               Welcome! Set up your admin account to get started.
             </p>
@@ -354,7 +379,9 @@ export default component$(() => {
     <div class="admin-container">
       <div class="admin-card">
         <header class="admin-login-header">
-          <h2>🔐 Admin Login</h2>
+          <h2>
+            <LuLock /> Admin Login
+          </h2>
           <p class="admin-description">
             Enter your admin credentials to access the dashboard
           </p>

@@ -5,6 +5,14 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
+import {
+  LuBookOpen,
+  LuBan,
+  LuLock,
+  LuZap,
+  LuSmartphone,
+  LuUser,
+} from "@qwikest/icons/lucide";
 import { loadVideosServer } from "~/lib/data-loaders";
 import styles from "./index.css?inline";
 import { ChannelHeader } from "~/components/channel/channel-header";
@@ -51,7 +59,9 @@ export default component$(() => {
       <div class="about-container">
         <main class="about-content">
           <div class="about-header">
-            <h2>📖 About This Channel</h2>
+            <h2>
+              <LuBookOpen /> About This Channel
+            </h2>
           </div>
 
           <div class="about-text-section">
@@ -66,7 +76,9 @@ export default component$(() => {
             <h3>Platform Features</h3>
             <div class="features-grid">
               <div class="feature-item">
-                <span class="feature-icon">🚫</span>
+                <span class="feature-icon">
+                  <LuBan />
+                </span>
                 <h4>Ad-Free Experience</h4>
                 <p>
                   Enjoy uninterrupted viewing without any advertisements or
@@ -74,7 +86,9 @@ export default component$(() => {
                 </p>
               </div>
               <div class="feature-item">
-                <span class="feature-icon">🔒</span>
+                <span class="feature-icon">
+                  <LuLock />
+                </span>
                 <h4>Private & Secure</h4>
                 <p>
                   Self-hosted infrastructure with complete control over your
@@ -82,7 +96,9 @@ export default component$(() => {
                 </p>
               </div>
               <div class="feature-item">
-                <span class="feature-icon">⚡</span>
+                <span class="feature-icon">
+                  <LuZap />
+                </span>
                 <h4>Fast Streaming</h4>
                 <p>
                   HLS adaptive streaming technology for smooth playback on any
@@ -90,7 +106,9 @@ export default component$(() => {
                 </p>
               </div>
               <div class="feature-item">
-                <span class="feature-icon">📱</span>
+                <span class="feature-icon">
+                  <LuSmartphone />
+                </span>
                 <h4>Mobile Optimized</h4>
                 <p>
                   Responsive design that works seamlessly across all devices and
@@ -102,7 +120,9 @@ export default component$(() => {
 
           {auth.value.isAuthenticated && (
             <div class="admin-info-box">
-              <h4>👤 Admin Access</h4>
+              <h4>
+                <LuUser /> Admin Access
+              </h4>
               <p>
                 You're logged in as an administrator. You can edit the about
                 text in the{" "}

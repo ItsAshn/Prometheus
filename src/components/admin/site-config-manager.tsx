@@ -1,10 +1,21 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import { LuPalette, LuAlertTriangle, LuBarChart } from "@qwikest/icons/lucide";
 import {
   getThemeConfig,
   applyThemeTemplate,
   applyCustomCSS,
 } from "~/lib/theme-utils";
+import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  accessSync,
+  constants,
+} from "fs";
+import { join } from "path";
 import "./site-config-manager.css";
 
 interface SiteConfig {
@@ -26,6 +37,62 @@ interface SiteConfigStore {
   successMessage: string;
 }
 
+// Config file path
+const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
+
+// Default configuration
+const DEFAULT_CONFIG: SiteConfig = {
+  channelName: "My Video Channel",
+  channelDescription:
+    "Welcome to my self-hosted video streaming platform. Here you can find all my videos and content.",
+  aboutText:
+    "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
+  customCss: "",
+  selectedTemplate: "modern",
+  bannerImage: "",
+  avatarImage: "",
+  lastUpdated: new Date().toISOString(),
+};
+
+function loadSiteConfigFromFile(): SiteConfig {
+  try {
+    if (existsSync(CONFIG_FILE_PATH)) {
+      const configData = readFileSync(CONFIG_FILE_PATH, "utf-8");
+      if (!configData || configData.trim() === "") {
+        return DEFAULT_CONFIG;
+      }
+      return JSON.parse(configData);
+    }
+  } catch (error) {
+    console.error("[Site Config] Error loading site config:", error);
+  }
+  return DEFAULT_CONFIG;
+}
+
+function saveSiteConfigToFile(config: SiteConfig): void {
+  const tempDir = join(process.cwd(), "temp");
+
+  if (!existsSync(tempDir)) {
+    mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+  }
+
+  // Verify directory is writable
+  accessSync(tempDir, constants.W_OK);
+
+  config.lastUpdated = new Date().toISOString();
+  const jsonString = JSON.stringify(config, null, 2);
+
+  writeFileSync(CONFIG_FILE_PATH, jsonString, {
+    encoding: "utf-8",
+    mode: 0o644,
+  });
+
+  // Verify the file was written
+  if (!existsSync(CONFIG_FILE_PATH)) {
+    throw new Error("Config file was not created after write operation");
+  }
+}
+
 export const SiteConfigManager = component$(() => {
   const store = useStore<SiteConfigStore>({
     isLoading: true,
@@ -45,29 +112,33 @@ export const SiteConfigManager = component$(() => {
   const isUploadingBanner = useSignal(false);
   const isUploadingAvatar = useSignal(false);
 
-  // Server function to load site configuration
+  // Server function to load site configuration - direct file access
   const loadSiteConfig = server$(async function () {
     try {
-      const response = await fetch(`${this.url.origin}/api/admin/site-config`, {
-        headers: {
-          Cookie: this.request.headers.get("cookie") || "",
-        },
-      });
+      // Verify auth via cookie
+      const cookieHeader = this.request.headers.get("cookie") || "";
+      const cookies = Object.fromEntries(
+        cookieHeader.split(";").map((c) => {
+          const [key, ...val] = c.trim().split("=");
+          return [key, val.join("=")];
+        })
+      );
+      const authCookie = cookies[ADMIN_COOKIE_NAME];
 
-      if (response.ok) {
-        const config = await response.json();
-        return { success: true, config };
+      if (!authCookie || !AdminAuthService.verifyToken(authCookie)) {
+        return { success: false, error: "Unauthorized" };
       }
 
-      return { success: false, error: "Failed to load configuration" };
+      const config = loadSiteConfigFromFile();
+      return { success: true, config };
     } catch (error) {
       console.error("Error loading site config:", error);
-      return { success: false, error: "Network error" };
+      return { success: false, error: "Failed to load configuration" };
     }
   });
 
-  // Server function to save site configuration
-  const saveSiteConfig = server$(async function (config: {
+  // Server function to save site configuration - direct file access
+  const saveSiteConfig = server$(async function (configInput: {
     channelName: string;
     channelDescription: string;
     aboutText: string;
@@ -77,61 +148,47 @@ export const SiteConfigManager = component$(() => {
     avatarImage: string;
   }) {
     try {
+      // Verify auth via cookie
       const cookieHeader = this.request.headers.get("cookie") || "";
-
-      console.log("[Frontend] Sending config to API:", config);
-
-      const response = await fetch(`${this.url.origin}/api/admin/site-config`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: cookieHeader,
-        },
-        body: JSON.stringify(config),
-      });
-
-      console.log("[Frontend] Response status:", response.status);
-      console.log(
-        "[Frontend] Response headers:",
-        Object.fromEntries(response.headers.entries())
+      const cookies = Object.fromEntries(
+        cookieHeader.split(";").map((c) => {
+          const [key, ...val] = c.trim().split("=");
+          return [key, val.join("=")];
+        })
       );
+      const authCookie = cookies[ADMIN_COOKIE_NAME];
 
-      // Get the raw response text first
-      const responseText = await response.text();
-      console.log("[Frontend] Raw response:", responseText);
+      if (!authCookie || !AdminAuthService.verifyToken(authCookie)) {
+        return { success: false, error: "Unauthorized" };
+      }
 
-      if (!responseText || responseText.trim() === "") {
-        console.error("[Frontend] Empty response from server");
+      if (!configInput.channelName || !configInput.channelDescription) {
         return {
           success: false,
-          error:
-            "Server returned empty response. Check server logs for details.",
+          error: "Channel name and description are required",
         };
       }
 
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("[Frontend] Failed to parse response:", parseError);
-        return {
-          success: false,
-          error: `Invalid JSON response: ${responseText.substring(0, 100)}`,
-        };
-      }
-
-      if (response.ok) {
-        return { success: true, config: result.config };
-      }
-
-      return {
-        success: false,
-        error: result.message || "Failed to save configuration",
+      const config: SiteConfig = {
+        channelName: configInput.channelName.trim(),
+        channelDescription: configInput.channelDescription.trim(),
+        aboutText: configInput.aboutText ? configInput.aboutText.trim() : "",
+        customCss: configInput.customCss || "",
+        selectedTemplate: configInput.selectedTemplate || "modern",
+        bannerImage: configInput.bannerImage || "",
+        avatarImage: configInput.avatarImage || "",
+        lastUpdated: new Date().toISOString(),
       };
+
+      console.log("[Site Config] Saving config directly:", config);
+      saveSiteConfigToFile(config);
+      console.log("[Site Config] Config saved successfully");
+
+      return { success: true, config };
     } catch (error) {
       console.error("Error saving site config:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Network error";
+        error instanceof Error ? error.message : "Failed to save configuration";
       return { success: false, error: errorMessage };
     }
   });
@@ -183,7 +240,7 @@ export const SiteConfigManager = component$(() => {
       const result = await saveSiteConfig(config);
 
       if (result.success) {
-        store.config = result.config;
+        store.config = result.config ?? null;
         store.successMessage = "Configuration saved successfully!";
       } else {
         store.error = result.error || "Failed to save configuration";
@@ -301,7 +358,9 @@ export const SiteConfigManager = component$(() => {
   return (
     <div class="site-config-manager">
       <div class="admin-card">
-        <h3>🎨 Site Configuration</h3>
+        <h3>
+          <LuPalette /> Site Configuration
+        </h3>
         <p>Customize your channel name, description, and styling.</p>
 
         {store.error && (
@@ -453,7 +512,9 @@ export const SiteConfigManager = component$(() => {
       </div>
 
       <div class="admin-card">
-        <h3>🎨 Theme Templates</h3>
+        <h3>
+          <LuPalette /> Theme Templates
+        </h3>
         <p>Choose from our predefined themes for quick styling changes.</p>
 
         <div class="form-group">
@@ -537,7 +598,9 @@ export const SiteConfigManager = component$(() => {
       </div>
 
       <div class="admin-card">
-        <h3>🎨 Custom CSS</h3>
+        <h3>
+          <LuPalette /> Custom CSS
+        </h3>
         <p>
           Paste your custom CSS here to override the default styling. This will
           replace the entire global.css file.
@@ -566,15 +629,18 @@ export const SiteConfigManager = component$(() => {
             {store.isSaving ? "Applying..." : "Apply CSS"}
           </button>
           <p class="css-warning">
-            ⚠️ <strong>Warning:</strong> This will overwrite your current
-            global.css file. A backup will be created automatically.
+            <LuAlertTriangle /> <strong>Warning:</strong> This will overwrite
+            your current global.css file. A backup will be created
+            automatically.
           </p>
         </div>
       </div>
 
       {store.config && (
         <div class="admin-card">
-          <h3>📊 Configuration Status</h3>
+          <h3>
+            <LuBarChart /> Configuration Status
+          </h3>
           <p>
             <strong>Last Updated:</strong>{" "}
             {new Date(store.config.lastUpdated).toLocaleString()}

@@ -2,9 +2,11 @@ import {
   component$,
   useSignal,
   useVisibleTask$,
+  useTask$,
   $,
   useStylesScoped$,
 } from "@builder.io/qwik";
+import { LuAlertTriangle, LuClapperboard, LuPlay } from "@qwikest/icons/lucide";
 import { loadVideosServer } from "~/lib/data-loaders";
 import { VideoPlayer } from "./video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
@@ -29,12 +31,13 @@ export default component$<VideoListProps>((props) => {
   useStylesScoped$(styles);
   const videos = useSignal<VideoMetadata[]>([]);
   const allVideos = useSignal<VideoMetadata[]>([]); // Store all filtered videos
+  const cachedVideos = useSignal<VideoMetadata[]>([]); // Cache raw videos to avoid refetching
   const isLoading = useSignal(true);
   const error = useSignal("");
   const selectedVideo = useSignal<VideoMetadata | null>(null);
   const currentPage = useSignal(1);
 
-  // Extract props to avoid serialization issues
+  // Extract props with defaults - keep as reactive by accessing props directly in functions
   const {
     isAdmin = false,
     count,
@@ -43,76 +46,82 @@ export default component$<VideoListProps>((props) => {
     enablePlayer = true,
     showActions = true,
     showMetadata = true,
-    sortBy = "newest",
     className = "",
-    searchQuery = "",
     enablePagination = false,
     itemsPerPage = 12,
   } = props;
 
-  const loadVideos = $(async () => {
+  const loadVideos = $(async (forceRefresh = false) => {
     try {
       isLoading.value = true;
-      const result = await loadVideosServer();
 
-      if (result) {
-        let videoList = result;
-
-        // Apply search filter if query exists
-        if (searchQuery && searchQuery.trim()) {
-          const query = searchQuery.toLowerCase().trim();
-          videoList = videoList.filter((video: VideoMetadata) =>
-            video.title.toLowerCase().includes(query)
-          );
+      // Use cached videos if available, otherwise fetch
+      let rawVideos = cachedVideos.value;
+      if (forceRefresh || rawVideos.length === 0) {
+        const result = await loadVideosServer();
+        if (result) {
+          rawVideos = result;
+          cachedVideos.value = result;
+        } else {
+          error.value = "Failed to load videos";
+          return;
         }
-
-        // Apply sorting
-        switch (sortBy) {
-          case "newest":
-            videoList.sort(
-              (a: VideoMetadata, b: VideoMetadata) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-            );
-            break;
-          case "oldest":
-            videoList.sort(
-              (a: VideoMetadata, b: VideoMetadata) =>
-                new Date(a.createdAt).getTime() -
-                new Date(b.createdAt).getTime()
-            );
-            break;
-          case "title":
-            videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
-              a.title.localeCompare(b.title)
-            );
-            break;
-          case "duration":
-            videoList.sort(
-              (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
-            );
-            break;
-        }
-
-        // Store all videos for pagination
-        allVideos.value = videoList;
-
-        // Apply pagination or count limit
-        if (enablePagination) {
-          // Show items based on current page
-          const startIndex = 0;
-          const endIndex = currentPage.value * itemsPerPage;
-          videoList = videoList.slice(startIndex, endIndex);
-        } else if (count && count > 0) {
-          // Apply count limit if specified (no pagination)
-          videoList = videoList.slice(0, count);
-        }
-
-        videos.value = videoList;
-        error.value = "";
-      } else {
-        error.value = "Failed to load videos";
       }
+
+      let videoList = [...rawVideos];
+
+      // Apply search filter if query exists
+      const currentSearchQuery = props.searchQuery ?? "";
+      if (currentSearchQuery && currentSearchQuery.trim()) {
+        const query = currentSearchQuery.toLowerCase().trim();
+        videoList = videoList.filter((video: VideoMetadata) =>
+          video.title.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply sorting
+      const currentSortBy = props.sortBy ?? "newest";
+      switch (currentSortBy) {
+        case "newest":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          break;
+        case "oldest":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          break;
+        case "title":
+          videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
+            a.title.localeCompare(b.title)
+          );
+          break;
+        case "duration":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
+          );
+          break;
+      }
+
+      // Store all videos for pagination
+      allVideos.value = videoList;
+
+      // Apply pagination or count limit
+      if (enablePagination) {
+        // Show items based on current page
+        const startIndex = 0;
+        const endIndex = currentPage.value * itemsPerPage;
+        videoList = videoList.slice(startIndex, endIndex);
+      } else if (count && count > 0) {
+        // Apply count limit if specified (no pagination)
+        videoList = videoList.slice(0, count);
+      }
+
+      videos.value = videoList;
+      error.value = "";
     } catch (err) {
       console.error("Error loading videos:", err);
       error.value = "Failed to load videos";
@@ -121,9 +130,74 @@ export default component$<VideoListProps>((props) => {
     }
   });
 
+  // Track changes to sortBy and searchQuery props and re-apply filters
+  useTask$(({ track }) => {
+    const currentSort = track(() => props.sortBy);
+    const currentSearch = track(() => props.searchQuery);
+
+    // Only run filtering if we have cached videos (i.e., after initial load)
+    if (cachedVideos.value.length > 0) {
+      // Reset pagination when filters change
+      currentPage.value = 1;
+
+      // Apply filters without refetching
+      let videoList = [...cachedVideos.value];
+
+      // Apply search filter
+      if (currentSearch && currentSearch.trim()) {
+        const query = currentSearch.toLowerCase().trim();
+        videoList = videoList.filter((video: VideoMetadata) =>
+          video.title.toLowerCase().includes(query)
+        );
+      }
+
+      // Apply sorting
+      const sortOption = currentSort ?? "newest";
+      switch (sortOption) {
+        case "newest":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          break;
+        case "oldest":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          break;
+        case "title":
+          videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
+            a.title.localeCompare(b.title)
+          );
+          break;
+        case "duration":
+          videoList.sort(
+            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
+          );
+          break;
+      }
+
+      // Store all filtered videos for pagination
+      allVideos.value = videoList;
+
+      // Apply pagination or count limit
+      if (enablePagination) {
+        const endIndex = currentPage.value * itemsPerPage;
+        videoList = videoList.slice(0, endIndex);
+      } else if (count && count > 0) {
+        videoList = videoList.slice(0, count);
+      }
+
+      videos.value = videoList;
+    }
+  });
+
   const loadMore = $(() => {
     currentPage.value += 1;
-    loadVideos();
+    // Apply pagination to allVideos
+    const endIndex = currentPage.value * itemsPerPage;
+    videos.value = allVideos.value.slice(0, endIndex);
   });
 
   const deleteVideo = $(async (videoId: string) => {
@@ -149,8 +223,8 @@ export default component$<VideoListProps>((props) => {
       const result = await response.json();
 
       if (result.success) {
-        // Refresh video list
-        await loadVideos();
+        // Refresh video list (force refresh to get updated data)
+        await loadVideos(true);
 
         // Close video player if deleted video was selected
         if (selectedVideo.value?.id === videoId) {
@@ -198,11 +272,11 @@ export default component$<VideoListProps>((props) => {
 
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async ({ cleanup }) => {
-    await loadVideos();
+    await loadVideos(true);
 
     // Listen for video upload events
     const handleVideoUploaded = () => {
-      loadVideos();
+      loadVideos(true);
     };
 
     if (typeof window !== "undefined") {
@@ -226,9 +300,11 @@ export default component$<VideoListProps>((props) => {
   if (error.value) {
     return (
       <div class="video-list-error">
-        <div class="error-icon">⚠️</div>
+        <div class="error-icon">
+          <LuAlertTriangle />
+        </div>
         <p>{error.value}</p>
-        <button onClick$={loadVideos} class="btn btn-primary">
+        <button onClick$={() => loadVideos(true)} class="btn btn-primary">
           Try Again
         </button>
       </div>
@@ -238,7 +314,9 @@ export default component$<VideoListProps>((props) => {
   if (videos.value.length === 0) {
     return (
       <div class={`no-videos ${className}`}>
-        <div class="empty-icon">🎬</div>
+        <div class="empty-icon">
+          <LuClapperboard />
+        </div>
         <h3>No Videos Available</h3>
         <p>
           {isAdmin
@@ -288,12 +366,14 @@ export default component$<VideoListProps>((props) => {
                 {!video.thumbnail && (
                   <div class="thumbnail-placeholder">
                     <span class="placeholder-icon" aria-hidden="true">
-                      🎬
+                      <LuClapperboard />
                     </span>
                   </div>
                 )}
                 <div class="play-overlay" aria-hidden="true">
-                  <div class="play-icon">▶️</div>
+                  <div class="play-icon">
+                    <LuPlay />
+                  </div>
                 </div>
                 {showMetadata && (
                   <div

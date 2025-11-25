@@ -1,4 +1,5 @@
 import { component$, useSignal, useVisibleTask$ } from "@builder.io/qwik";
+import { LuRefreshCw, LuCheckCircle, LuXCircle } from "@qwikest/icons/lucide";
 import { loadProcessingStatusServer } from "~/lib/data-loaders";
 import "./processing-status.css";
 
@@ -49,7 +50,9 @@ export const ProcessingStatus = component$(() => {
     <div class="mb-8">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title text-lg">🔄 Processing Videos</h3>
+          <h3 class="card-title text-lg">
+            <LuRefreshCw /> Processing Videos
+          </h3>
         </div>
         <div class="card-content processing-status-grid">
           {processingVideos.value.map((video) => (
@@ -92,7 +95,7 @@ export const ProcessingStatus = component$(() => {
               {video.status === "completed" && (
                 <div class="alert alert-success">
                   <div class="alert-description">
-                    ✅ Video processing completed successfully!
+                    <LuCheckCircle /> Video processing completed successfully!
                   </div>
                 </div>
               )}
@@ -100,7 +103,7 @@ export const ProcessingStatus = component$(() => {
               {video.status === "failed" && (
                 <div class="alert alert-destructive">
                   <div class="alert-description">
-                    ❌ Video processing failed. Please try again.
+                    <LuXCircle /> Video processing failed. Please try again.
                   </div>
                 </div>
               )}

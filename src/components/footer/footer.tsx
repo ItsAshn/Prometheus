@@ -1,4 +1,5 @@
 import { component$, useStylesScoped$ } from "@builder.io/qwik";
+import { LuMonitor, LuBan, LuLock, LuZap } from "@qwikest/icons/lucide";
 import styles from "./footer.css?inline";
 
 interface FooterProps {
@@ -19,7 +20,7 @@ export const Footer = component$<FooterProps>(
             <div class="footer-section">
               <h3 class="footer-title">
                 <span class="footer-icon" aria-hidden="true">
-                  📺
+                  <LuMonitor />
                 </span>
                 {channelName}
               </h3>
@@ -77,17 +78,17 @@ export const Footer = component$<FooterProps>(
                   role="listitem"
                   aria-label="Ad-free platform"
                 >
-                  🚫 Ad-Free
+                  <LuBan /> Ad-Free
                 </span>
                 <span
                   class="badge"
                   role="listitem"
                   aria-label="Private and secure"
                 >
-                  🔒 Private
+                  <LuLock /> Private
                 </span>
                 <span class="badge" role="listitem" aria-label="Fast streaming">
-                  ⚡ Fast
+                  <LuZap /> Fast
                 </span>
               </div>
             </div>

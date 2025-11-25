@@ -1,5 +1,14 @@
 import { component$, Slot, useStylesScoped$ } from "@builder.io/qwik";
 import { useLocation } from "@builder.io/qwik-city";
+import {
+  LuSlidersHorizontal,
+  LuUser,
+  LuLayoutDashboard,
+  LuClapperboard,
+  LuSettings,
+  LuRefreshCw,
+  LuHome,
+} from "@qwikest/icons/lucide";
 import { useAuthLoader } from "../layout";
 
 export const Layout = component$(() => {
@@ -30,11 +39,15 @@ export const Layout = component$(() => {
       <aside class="admin-sidebar">
         <div class="sidebar-header">
           <div class="sidebar-brand">
-            <span class="brand-icon">🎛️</span>
+            <span class="brand-icon">
+              <LuSlidersHorizontal />
+            </span>
             <span class="brand-text">Admin Panel</span>
           </div>
           <div class="sidebar-user">
-            <span class="user-avatar">👤</span>
+            <span class="user-avatar">
+              <LuUser />
+            </span>
             <div class="user-details">
               <span class="user-name">{auth.value.user?.username}</span>
               <span class="user-role">Administrator</span>
@@ -47,35 +60,45 @@ export const Layout = component$(() => {
             href="/admin"
             class={`nav-item ${isActive("/admin") ? "active" : ""}`}
           >
-            <span class="nav-icon">📊</span>
+            <span class="nav-icon">
+              <LuLayoutDashboard />
+            </span>
             <span class="nav-label">Dashboard</span>
           </a>
           <a
             href="/admin/videos"
             class={`nav-item ${isActive("/admin/videos") ? "active" : ""}`}
           >
-            <span class="nav-icon">🎬</span>
+            <span class="nav-icon">
+              <LuClapperboard />
+            </span>
             <span class="nav-label">Videos</span>
           </a>
           <a
             href="/admin/config"
             class={`nav-item ${isActive("/admin/config") ? "active" : ""}`}
           >
-            <span class="nav-icon">⚙️</span>
+            <span class="nav-icon">
+              <LuSettings />
+            </span>
             <span class="nav-label">Site Config</span>
           </a>
           <a
             href="/admin/system-update"
             class={`nav-item ${isActive("/admin/system-update") ? "active" : ""}`}
           >
-            <span class="nav-icon">🔄</span>
+            <span class="nav-icon">
+              <LuRefreshCw />
+            </span>
             <span class="nav-label">System Update</span>
           </a>
         </nav>
 
         <div class="sidebar-footer">
           <a href="/" class="nav-item">
-            <span class="nav-icon">🏠</span>
+            <span class="nav-icon">
+              <LuHome />
+            </span>
             <span class="nav-label">Back to Site</span>
           </a>
         </div>

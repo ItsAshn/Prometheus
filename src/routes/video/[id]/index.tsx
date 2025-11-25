@@ -6,6 +6,15 @@ import {
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
 import { routeLoader$ } from "@builder.io/qwik-city";
+import {
+  LuAlertTriangle,
+  LuHome,
+  LuMonitor,
+  LuHardDrive,
+  LuCalendar,
+  LuClapperboard,
+  LuClock,
+} from "@qwikest/icons/lucide";
 import { VideoPlayer } from "~/components/video/video-player";
 import type { VideoMetadata } from "~/lib/video/video-processor";
 import { VideoProcessor } from "~/lib/video/video-processor";
@@ -74,7 +83,9 @@ export default component$(() => {
         <div class="site-container">
           <main class="site-content">
             <div class="error-container">
-              <div class="error-icon">⚠️</div>
+              <div class="error-icon">
+                <LuAlertTriangle />
+              </div>
               <h2>Video Not Found</h2>
               <p>{error.value || "The requested video could not be found."}</p>
               <div class="error-actions">
@@ -82,7 +93,7 @@ export default component$(() => {
                   ← Back to Videos
                 </a>
                 <a href="/" class="btn btn-secondary">
-                  🏠 Home
+                  <LuHome /> Home
                 </a>
               </div>
             </div>
@@ -126,14 +137,16 @@ export default component$(() => {
             <h1 class="video-title">{video.title}</h1>
             <div class="video-metadata">
               <span class="video-duration">
-                ⏱️ {formatDuration(video.duration)}
+                <LuClock /> {formatDuration(video.duration)}
               </span>
-              <span class="video-resolution">📺 {video.resolution}</span>
+              <span class="video-resolution">
+                <LuMonitor /> {video.resolution}
+              </span>
               <span class="video-size">
-                💾 {formatFileSize(video.fileSize)}
+                <LuHardDrive /> {formatFileSize(video.fileSize)}
               </span>
               <span class="video-date">
-                📅 {new Date(video.createdAt).toLocaleDateString()}
+                <LuCalendar /> {new Date(video.createdAt).toLocaleDateString()}
               </span>
             </div>
           </div>
@@ -163,10 +176,10 @@ export default component$(() => {
 
           <div class="video-actions">
             <a href="/videos" class="btn btn-primary btn-lg">
-              🎬 Browse More Videos
+              <LuClapperboard /> Browse More Videos
             </a>
             <a href="/" class="btn btn-secondary btn-lg">
-              🏠 Home
+              <LuHome /> Home
             </a>
           </div>
         </main>

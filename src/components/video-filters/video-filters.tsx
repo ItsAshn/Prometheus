@@ -1,4 +1,5 @@
 import { component$, useStylesScoped$, type QRL } from "@builder.io/qwik";
+import { LuSlidersHorizontal } from "@qwikest/icons/lucide";
 import styles from "./video-filters.css?inline";
 
 export type SortOption = "newest" | "oldest" | "title" | "duration";
@@ -22,7 +23,7 @@ export const VideoFilters = component$<VideoFiltersProps>(
         <div class="filters-header">
           <h3 class="filters-title">
             <span class="filters-icon" aria-hidden="true">
-              🎛️
+              <LuSlidersHorizontal />
             </span>
             Filters
           </h3>
@@ -55,23 +56,6 @@ export const VideoFilters = component$<VideoFiltersProps>(
             <option value="title">Title (A-Z)</option>
             <option value="duration">Duration (Longest)</option>
           </select>
-        </div>
-
-        <div class="filter-info">
-          <p class="info-text">
-            <span aria-hidden="true">ℹ️</span>
-            Use filters to organize and find videos more easily
-          </p>
-        </div>
-
-        <div class="filter-tips">
-          <h4 class="tips-title">Quick Tips</h4>
-          <ul class="tips-list">
-            <li>🔍 Use search to find specific videos</li>
-            <li>📅 Sort by date to see latest uploads</li>
-            <li>🏷️ Sort alphabetically for easy browsing</li>
-            <li>⏱️ Sort by duration to find long/short content</li>
-          </ul>
         </div>
       </aside>
     );

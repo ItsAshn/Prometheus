@@ -1,4 +1,11 @@
 import { component$, useStylesScoped$ } from "@builder.io/qwik";
+import {
+  LuMonitor,
+  LuClapperboard,
+  LuBan,
+  LuLock,
+  LuUnlock,
+} from "@qwikest/icons/lucide";
 import styles from "./channel-header.css?inline";
 
 interface ChannelHeaderProps {
@@ -48,7 +55,9 @@ export const ChannelHeader = component$<ChannelHeaderProps>(
                   style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;"
                 />
               ) : (
-                <span>📺</span>
+                <span>
+                  <LuMonitor />
+                </span>
               )}
             </div>
             <div class="channel-details">
@@ -56,21 +65,29 @@ export const ChannelHeader = component$<ChannelHeaderProps>(
               <p class="channel-description">{channelDescription}</p>
               <div class="channel-stats">
                 <div class="stat-item">
-                  <span>🎬</span>
+                  <span>
+                    <LuClapperboard />
+                  </span>
                   <span class="stat-value">{videoCount}</span>
                   <span>{videoCount === 1 ? "video" : "videos"}</span>
                 </div>
                 <div class="stat-item">
-                  <span>🚫</span>
+                  <span>
+                    <LuBan />
+                  </span>
                   <span>Ad-Free</span>
                 </div>
                 <div class="stat-item">
-                  <span>🔒</span>
+                  <span>
+                    <LuLock />
+                  </span>
                   <span>Private Hosting</span>
                 </div>
                 {isAuthenticated && (
                   <div class="admin-badge">
-                    <span>🔓</span>
+                    <span>
+                      <LuUnlock />
+                    </span>
                     <span>Admin</span>
                   </div>
                 )}

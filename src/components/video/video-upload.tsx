@@ -1,4 +1,17 @@
 import { component$, useSignal, $, useStylesScoped$ } from "@builder.io/qwik";
+import {
+  LuVideo,
+  LuTag,
+  LuFolderOpen,
+  LuBarChart,
+  LuImage,
+  LuCheckCircle,
+  LuXCircle,
+  LuInfo,
+  LuUpload,
+  LuLoader,
+  LuRocket,
+} from "@qwikest/icons/lucide";
 import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
 import styles from "./video-upload.css?inline";
 
@@ -357,7 +370,9 @@ export const VideoUpload = component$(() => {
     <div class="video-upload-container">
       <div class="video-upload-card">
         <h3>
-          <span class="upload-icon">📹</span>
+          <span class="upload-icon">
+            <LuVideo />
+          </span>
           Upload Video
         </h3>
         <p class="upload-description">
@@ -372,7 +387,9 @@ export const VideoUpload = component$(() => {
         >
           <div class="form-group">
             <label for="video-title">
-              <span class="label-icon">🏷️</span>
+              <span class="label-icon">
+                <LuTag />
+              </span>
               Video Title
             </label>
             <input
@@ -389,7 +406,9 @@ export const VideoUpload = component$(() => {
 
           <div class="form-group">
             <label for="video-file">
-              <span class="label-icon">📁</span>
+              <span class="label-icon">
+                <LuFolderOpen />
+              </span>
               Video File
             </label>
             <input
@@ -401,13 +420,16 @@ export const VideoUpload = component$(() => {
               class="form-input file-input"
             />
             <small class="file-info">
-              📊 Supported formats: MP4, AVI, MOV, MKV, WebM • Maximum size: 5GB
+              <LuBarChart /> Supported formats: MP4, AVI, MOV, MKV, WebM |
+              Maximum size: 5GB
             </small>
           </div>
 
           <div class="form-group">
             <label for="video-thumbnail">
-              <span class="label-icon">🖼️</span>
+              <span class="label-icon">
+                <LuImage />
+              </span>
               Thumbnail (Optional)
             </label>
             <input
@@ -419,8 +441,8 @@ export const VideoUpload = component$(() => {
               class="form-input file-input"
             />
             <small class="file-info">
-              🎨 Recommended: 1280x720 • JPG, PNG, or WebP • Max 5MB • If not
-              provided, a thumbnail will be auto-generated
+              <LuImage /> Recommended: 1280x720 | JPG, PNG, or WebP | Max 5MB |
+              If not provided, a thumbnail will be auto-generated
             </small>
             {thumbnailPreview.value && (
               <div class="thumbnail-preview">
@@ -438,9 +460,9 @@ export const VideoUpload = component$(() => {
             <div class={`upload-message ${messageType.value}`}>
               <div class="message-content">
                 <span class="message-icon">
-                  {messageType.value === "success" && "✅"}
-                  {messageType.value === "error" && "❌"}
-                  {messageType.value === "info" && "ℹ️"}
+                  {messageType.value === "success" && <LuCheckCircle />}
+                  {messageType.value === "error" && <LuXCircle />}
+                  {messageType.value === "info" && <LuInfo />}
                 </span>
                 <p>{message.value}</p>
               </div>
@@ -462,9 +484,15 @@ export const VideoUpload = component$(() => {
                 ></div>
               </div>
               <p class="progress-status">
-                {uploadProgress.value < 90
-                  ? "⬆️ Uploading chunks..."
-                  : "🔄 Assembling and processing..."}
+                {uploadProgress.value < 90 ? (
+                  <>
+                    <LuUpload /> Uploading chunks...
+                  </>
+                ) : (
+                  <>
+                    <LuLoader /> Assembling and processing...
+                  </>
+                )}
               </p>
             </div>
           )}
@@ -476,7 +504,9 @@ export const VideoUpload = component$(() => {
             }
             class="btn btn-primary btn-lg"
           >
-            <span class="btn-icon">{isUploading.value ? "⏳" : "🚀"}</span>
+            <span class="btn-icon">
+              {isUploading.value ? <LuLoader /> : <LuRocket />}
+            </span>
             {isUploading.value ? "Uploading..." : "Upload Video"}
           </button>
         </form>

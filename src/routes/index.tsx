@@ -5,6 +5,11 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
+import {
+  LuSlidersHorizontal,
+  LuClapperboard,
+  LuSettings,
+} from "@qwikest/icons/lucide";
 import { loadVideosServer } from "~/lib/data-loaders";
 import VideoList from "~/components/video/VideoList";
 import { ChannelHeader } from "~/components/channel/channel-header";
@@ -55,21 +60,27 @@ export default component$(() => {
               <h3 class="section-title">Admin Quick Actions</h3>
               <div class="quick-actions-grid">
                 <a href="/admin" class="action-card">
-                  <span class="action-icon">🎛️</span>
+                  <span class="action-icon">
+                    <LuSlidersHorizontal />
+                  </span>
                   <div class="action-info">
                     <h4>Dashboard</h4>
                     <p>View overview & stats</p>
                   </div>
                 </a>
                 <a href="/admin/videos" class="action-card">
-                  <span class="action-icon">�</span>
+                  <span class="action-icon">
+                    <LuClapperboard />
+                  </span>
                   <div class="action-info">
                     <h4>Manage Videos</h4>
                     <p>Upload & organize content</p>
                   </div>
                 </a>
                 <a href="/admin/config" class="action-card">
-                  <span class="action-icon">⚙️</span>
+                  <span class="action-icon">
+                    <LuSettings />
+                  </span>
                   <div class="action-info">
                     <h4>Settings</h4>
                     <p>Configure your channel</p>

@@ -5,6 +5,7 @@ import {
   $,
   useStylesScoped$,
 } from "@builder.io/qwik";
+import { LuSun, LuMoon } from "@qwikest/icons/lucide";
 import styles from "./theme-toggle.css?inline";
 
 interface ThemeStore {
@@ -89,7 +90,7 @@ export const ThemeToggle = component$(() => {
         aria-label="Toggle theme"
         title={theme.isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
-        <span class="theme-icon">{theme.isDark ? "☀️" : "🌙"}</span>
+        <span class="theme-icon">{theme.isDark ? <LuSun /> : <LuMoon />}</span>
         <span class="theme-label">{theme.isDark ? "Light" : "Dark"}</span>
       </button>
     </div>

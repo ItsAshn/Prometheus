@@ -7,6 +7,7 @@ import {
   useSignal,
 } from "@builder.io/qwik";
 import { routeLoader$ } from "@builder.io/qwik-city";
+import { LuMonitor, LuUser, LuMenu, LuX } from "@qwikest/icons/lucide";
 import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import { Footer } from "~/components/footer/footer";
 import { SearchBar } from "~/components/search/search-bar";
@@ -94,7 +95,7 @@ export default component$(() => {
           <div class="header-left">
             <a href="/" class="logo-link" aria-label="Home">
               <span class="logo-icon" aria-hidden="true">
-                📺
+                <LuMonitor />
               </span>
               <span class="logo-text">{channelName}</span>
             </a>
@@ -136,7 +137,9 @@ export default component$(() => {
             {auth.value.isAuthenticated ? (
               <>
                 <div class="user-info" aria-label="User information">
-                  <span aria-hidden="true">👤</span>
+                  <span aria-hidden="true">
+                    <LuUser />
+                  </span>
                   <span class="user-name">{auth.value.user?.username}</span>
                 </div>
                 <a
@@ -172,7 +175,7 @@ export default component$(() => {
               aria-expanded={isMobileMenuOpen.value}
             >
               <span class="hamburger-icon">
-                {isMobileMenuOpen.value ? "✕" : "☰"}
+                {isMobileMenuOpen.value ? <LuX /> : <LuMenu />}
               </span>
             </button>
           </div>

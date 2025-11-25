@@ -1,5 +1,11 @@
 import { component$ } from "@builder.io/qwik";
 import type { DocumentHead } from "@builder.io/qwik-city";
+import {
+  LuVideo,
+  LuUpload,
+  LuSettings,
+  LuLibrary,
+} from "@qwikest/icons/lucide";
 import { VideoUpload } from "~/components/video/video-upload";
 import { ProcessingStatus } from "~/components/video/processing-status";
 import VideoList from "~/components/video/VideoList";
@@ -13,7 +19,9 @@ export default component$(() => {
         <header class="admin-videos-header">
           <div class="header-content">
             <h1>
-              <span class="header-emoji">📹</span>
+              <span class="header-emoji">
+                <LuVideo />
+              </span>
               Video Management
             </h1>
             <p class="header-subtitle">
@@ -36,7 +44,9 @@ export default component$(() => {
             <div class="section-header">
               <div>
                 <h2>
-                  <span class="section-icon">⬆️</span>
+                  <span class="section-icon">
+                    <LuUpload />
+                  </span>
                   Upload New Video
                 </h2>
                 <p class="section-description">
@@ -53,7 +63,9 @@ export default component$(() => {
             <div class="section-header">
               <div>
                 <h2>
-                  <span class="section-icon">⚙️</span>
+                  <span class="section-icon">
+                    <LuSettings />
+                  </span>
                   Processing Status
                 </h2>
                 <p class="section-description">
@@ -70,7 +82,9 @@ export default component$(() => {
             <div class="video-library-header">
               <div class="video-library-title">
                 <h2>
-                  <span class="section-icon">📚</span>
+                  <span class="section-icon">
+                    <LuLibrary />
+                  </span>
                   Video Library
                 </h2>
               </div>

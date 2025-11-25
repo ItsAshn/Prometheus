@@ -5,6 +5,13 @@ import {
   useVisibleTask$,
   $,
 } from "@builder.io/qwik";
+import {
+  LuAlertTriangle,
+  LuVideo,
+  LuSettings,
+  LuCheck,
+  LuX,
+} from "@qwikest/icons/lucide";
 import styles from "./video-player.css?inline";
 
 interface VideoPlayerProps {
@@ -58,7 +65,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
       const newAspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
       aspectRatio.value = newAspectRatio;
       console.log(
-        `✅ Video dimensions: ${video.videoWidth}x${video.videoHeight}, ratio: ${ratio.toFixed(2)}, aspect ratio set to: ${newAspectRatio}`
+        `[OK] Video dimensions: ${video.videoWidth}x${video.videoHeight}, ratio: ${ratio.toFixed(2)}, aspect ratio set to: ${newAspectRatio}`
       );
     } else {
       console.warn("Video metadata not available yet", {
@@ -238,7 +245,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                   hasEnoughBuffer = true;
                   isLoading.value = false;
                   isBuffering.value = false;
-                  console.log("✅ Sufficient buffer loaded, ready to play");
+                  console.log("[OK] Sufficient buffer loaded, ready to play");
 
                   if (props.autoplay) {
                     video.play().catch(console.error);
@@ -277,7 +284,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                 // If buffer is running low, pause and wait
                 if (bufferAhead < 3 && !video.paused && !isBuffering.value) {
                   console.warn(
-                    `⚠️ Low buffer: ${bufferAhead.toFixed(2)}s - may stutter`
+                    `[WARN] Low buffer: ${bufferAhead.toFixed(2)}s - may stutter`
                   );
                 }
               }
@@ -357,7 +364,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
       <article class="video-player-container" role="alert" aria-live="polite">
         <div class="video-player-error">
           <div class="error-icon" aria-hidden="true">
-            ⚠️
+            <LuAlertTriangle />
           </div>
           <p class="error-message">{error.value}</p>
           <p class="error-details">Video: {props.title}</p>
@@ -379,7 +386,9 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
       >
         {!isVisible.value && (
           <div class="video-placeholder" role="status">
-            <div class="placeholder-icon">📹</div>
+            <div class="placeholder-icon">
+              <LuVideo />
+            </div>
             <p>Video will load when visible...</p>
           </div>
         )}
@@ -438,7 +447,9 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
               onClick$={() => (showQualityMenu.value = !showQualityMenu.value)}
               aria-label="Select video quality"
             >
-              <span class="quality-icon">⚙️</span>
+              <span class="quality-icon">
+                <LuSettings />
+              </span>
               <span class="quality-label">
                 {currentQuality.value === -1
                   ? "Auto"
@@ -457,7 +468,7 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                     onClick$={() => (showQualityMenu.value = false)}
                     aria-label="Close quality menu"
                   >
-                    ✕
+                    <LuX />
                   </button>
                 </div>
                 <div class="quality-menu-items">
@@ -467,7 +478,9 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                   >
                     <span>Auto</span>
                     {currentQuality.value === -1 && (
-                      <span class="quality-check">✓</span>
+                      <span class="quality-check">
+                        <LuCheck />
+                      </span>
                     )}
                   </button>
                   {availableQualities.value.map((quality) => (
@@ -478,7 +491,9 @@ export const VideoPlayer = component$<VideoPlayerProps>((props) => {
                     >
                       <span>{quality.name}</span>
                       {currentQuality.value === quality.level && (
-                        <span class="quality-check">✓</span>
+                        <span class="quality-check">
+                          <LuCheck />
+                        </span>
                       )}
                     </button>
                   ))}

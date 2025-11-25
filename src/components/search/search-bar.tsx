@@ -6,6 +6,7 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 import { useNavigate } from "@builder.io/qwik-city";
+import { LuSearch, LuX } from "@qwikest/icons/lucide";
 import styles from "./search-bar.css?inline";
 
 interface SearchBarProps {
@@ -55,7 +56,9 @@ export const SearchBar = component$<SearchBarProps>(
         onSubmit$={handleSearch}
       >
         <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
+          <span class="search-icon">
+            <LuSearch />
+          </span>
           <input
             type="text"
             class="search-input"
@@ -75,7 +78,7 @@ export const SearchBar = component$<SearchBarProps>(
               onClick$={handleClear}
               aria-label="Clear search"
             >
-              ✕
+              <LuX />
             </button>
           )}
           <button type="submit" class="search-button" aria-label="Search">

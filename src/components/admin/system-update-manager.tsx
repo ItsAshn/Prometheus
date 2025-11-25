@@ -1,5 +1,13 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
+import {
+  LuAlertTriangle,
+  LuCheckCircle,
+  LuPackage,
+  LuRefreshCw,
+  LuSearch,
+  LuClipboard,
+} from "@qwikest/icons/lucide";
 import "./system-update-manager.css";
 
 interface UpdateInfo {
@@ -143,14 +151,18 @@ export const SystemUpdateManager = component$(() => {
 
       {store.error && (
         <div class="alert alert-error" role="alert">
-          <span class="alert-icon">⚠️</span>
+          <span class="alert-icon">
+            <LuAlertTriangle />
+          </span>
           <span>{store.error}</span>
         </div>
       )}
 
       {store.successMessage && (
         <div class="alert alert-success" role="alert">
-          <span class="alert-icon">✅</span>
+          <span class="alert-icon">
+            <LuCheckCircle />
+          </span>
           <span>{store.successMessage}</span>
         </div>
       )}
@@ -164,7 +176,9 @@ export const SystemUpdateManager = component$(() => {
         <div class="update-content">
           {/* Current Version Section */}
           <div class="update-card">
-            <h3>📦 Current Version</h3>
+            <h3>
+              <LuPackage /> Current Version
+            </h3>
             <div class="version-info">
               <div class="info-row">
                 <span class="info-label">Version:</span>
@@ -200,9 +214,15 @@ export const SystemUpdateManager = component$(() => {
             }`}
           >
             <h3>
-              {store.updateInfo.updateAvailable
-                ? "🔄 Update Available"
-                : "✅ Up to Date"}
+              {store.updateInfo.updateAvailable ? (
+                <>
+                  <LuRefreshCw /> Update Available
+                </>
+              ) : (
+                <>
+                  <LuCheckCircle /> Up to Date
+                </>
+              )}
             </h3>
 
             {store.updateInfo.updateAvailable && store.updateInfo.latest ? (
@@ -242,14 +262,24 @@ export const SystemUpdateManager = component$(() => {
               onClick$={handleCheckUpdates}
               disabled={store.isChecking}
             >
-              {store.isChecking ? "Checking..." : "🔍 Check for Updates"}
+              {store.isChecking ? (
+                "Checking..."
+              ) : (
+                <>
+                  <LuSearch /> Check for Updates
+                </>
+              )}
             </button>
 
             {store.updateInfo.updateAvailable && (
               <button class="btn btn-primary" onClick$={handleShowInstructions}>
-                {showInstructions.value
-                  ? "Hide Instructions"
-                  : "📋 Show Update Instructions"}
+                {showInstructions.value ? (
+                  "Hide Instructions"
+                ) : (
+                  <>
+                    <LuClipboard /> Show Update Instructions
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -257,7 +287,9 @@ export const SystemUpdateManager = component$(() => {
           {/* Update Instructions */}
           {showInstructions.value && store.updateInfo.updateAvailable && (
             <div class="update-instructions">
-              <h3>📋 Update Instructions</h3>
+              <h3>
+                <LuClipboard /> Update Instructions
+              </h3>
               <p class="instructions-intro">
                 To update your Prometheus container, run the following commands
                 on your Docker host machine:
@@ -277,7 +309,7 @@ export const SystemUpdateManager = component$(() => {
                           onClick$={() => copyCommand("docker-compose pull")}
                           title="Copy to clipboard"
                         >
-                          📋
+                          <LuClipboard />
                         </button>
                       </div>
                     </div>
@@ -296,7 +328,7 @@ export const SystemUpdateManager = component$(() => {
                           onClick$={() => copyCommand("docker-compose up -d")}
                           title="Copy to clipboard"
                         >
-                          📋
+                          <LuClipboard />
                         </button>
                       </div>
                     </div>
@@ -315,7 +347,7 @@ export const SystemUpdateManager = component$(() => {
                           }
                           title="Copy to clipboard"
                         >
-                          📋
+                          <LuClipboard />
                         </button>
                       </div>
                     </div>
@@ -341,7 +373,7 @@ export const SystemUpdateManager = component$(() => {
                         }
                         title="Copy to clipboard"
                       >
-                        📋
+                        <LuClipboard />
                       </button>
                     </div>
                   </div>
@@ -357,7 +389,7 @@ export const SystemUpdateManager = component$(() => {
                         }
                         title="Copy to clipboard"
                       >
-                        📋
+                        <LuClipboard />
                       </button>
                     </div>
                   </div>
@@ -365,7 +397,9 @@ export const SystemUpdateManager = component$(() => {
               </div>
 
               <div class="warning-box">
-                <span class="warning-icon">⚠️</span>
+                <span class="warning-icon">
+                  <LuAlertTriangle />
+                </span>
                 <div class="warning-content">
                   <strong>Important:</strong>
                   <ul>
