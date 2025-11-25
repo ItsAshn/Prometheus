@@ -1,5 +1,9 @@
 # Prometheus - Self-Hosted Video Platform
 
+[![Docker Hub](https://img.shields.io/docker/pulls/itsashn/prometheus?style=flat-square&logo=docker&label=Docker%20Hub)](https://hub.docker.com/r/itsashn/prometheus)
+[![Docker Image Version](https://img.shields.io/docker/v/itsashn/prometheus?style=flat-square&logo=docker&label=Latest)](https://hub.docker.com/r/itsashn/prometheus)
+[![License](https://img.shields.io/github/license/ItsAshn/Prometheus?style=flat-square)](LICENSE)
+
 > [!WARNING]
 > **🚧 Active Development Notice**
 >
@@ -32,11 +36,72 @@ A self-hosted video platform that gives you complete control over your content. 
 ## 🚀 Quick Start
 
 > 📖 **For complete deployment instructions with easy updates, see [DEPLOYMENT.md](DEPLOYMENT.md)**  
+> 🐳 **Docker Hub users:** See [DOCKER_HUB.md](DOCKER_HUB.md) for standalone deployment without cloning  
 > 🎯 **First-time setup is now easier than ever!** Just run the app and set up your admin credentials through the web interface.
 
-### Docker (Recommended) - Zero Configuration! ⭐
+---
 
-The absolute easiest way - just run:
+### 🐳 Docker Hub (Easiest - No Git Required!)
+
+Pull and run directly from Docker Hub:
+
+```bash
+# Create the network (first time only)
+docker network create --subnet=172.18.0.0/16 cloudflareTunnel
+
+# Run Prometheus
+docker run -d \
+  --name prometheus \
+  --network cloudflareTunnel \
+  --ip 172.18.0.7 \
+  -p 3000:3000 \
+  -v prometheus-videos:/app/public/videos \
+  -v prometheus-temp:/app/temp \
+  -v prometheus-data:/app/data \
+  --restart unless-stopped \
+  itsashn/prometheus:latest
+```
+
+**→ Access at:** http://localhost:3000  
+**👤 First-time setup:** Visit `/admin` to create your admin account
+
+> 📦 **Docker Hub:** https://hub.docker.com/r/itsashn/prometheus
+
+#### ☁️ Cloudflare Tunnel Setup (Optional but Recommended)
+
+To expose Prometheus securely to the internet without port forwarding, you can use **Cloudflare Tunnels**:
+
+1. **Create a Cloudflare account** at [dash.cloudflare.com](https://dash.cloudflare.com)
+2. **Add your domain** to Cloudflare (or use a free `.cfargotunnel.com` subdomain)
+3. **Create a tunnel** in the Cloudflare Zero Trust dashboard:
+   - Go to **Zero Trust** → **Networks** → **Tunnels**
+   - Click **Create a tunnel** → Choose **Cloudflared**
+   - Name your tunnel and save the **tunnel token**
+4. **Run the Cloudflare connector** on the same Docker network:
+
+```bash
+docker run -d \
+  --name cloudflared \
+  --network cloudflareTunnel \
+  --restart unless-stopped \
+  cloudflare/cloudflared:latest \
+  tunnel --no-autoupdate run --token YOUR_TUNNEL_TOKEN
+```
+
+5. **Configure the tunnel** in Cloudflare dashboard:
+   - Add a **Public Hostname** (e.g., `videos.yourdomain.com`)
+   - Set **Service** to `http://172.18.0.7:3000` (Prometheus's static IP)
+
+> **Why Cloudflare Tunnels?**
+>
+> - 🔒 No need to open ports on your router/firewall
+> - 🌐 Automatic HTTPS with valid SSL certificates
+> - 🛡️ DDoS protection and Web Application Firewall
+> - 🚀 Cloudflare's global CDN for faster video delivery
+
+---
+
+### Docker Compose (Recommended for Self-Hosting)
 
 ```bash
 git clone https://github.com/ItsAshn/Prometheus.git
