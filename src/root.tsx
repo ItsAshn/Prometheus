@@ -2,6 +2,19 @@ import { component$, isDev } from "@builder.io/qwik";
 import { QwikCityProvider, RouterOutlet } from "@builder.io/qwik-city";
 import "./global.css";
 
+// Inline script to prevent theme flash - runs before page renders
+const themeScript = `
+(function() {
+  try {
+    var savedTheme = localStorage.getItem('theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+})();
+`;
+
 export default component$(() => {
   /**
    * The root of a QwikCity site always start with the <QwikCityProvider> component,
@@ -14,6 +27,8 @@ export default component$(() => {
     <QwikCityProvider>
       <head>
         <meta charset="utf-8" />
+        {/* Theme initialization script - must run before body renders to prevent flash */}
+        <script dangerouslySetInnerHTML={themeScript} />
         {!isDev && (
           <link
             rel="manifest"

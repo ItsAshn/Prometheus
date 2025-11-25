@@ -10,12 +10,13 @@ A self-hosted video platform that gives you complete control over your content. 
 
 ```bash
 # Create a network (if you don't have one)
-docker network create cloudflareTunnel
+docker network create --subnet=172.18.0.0/16 cloudflareTunnel
 
-# Run the container
+# Run the container with proper network and static IP
 docker run -d \
   --name prometheus \
   --network cloudflareTunnel \
+  --ip 172.18.0.7 \
   -p 3000:3000 \
   -v prometheus-videos:/app/public/videos \
   -v prometheus-temp:/app/temp \
@@ -166,18 +167,47 @@ All environment variables are **optional** with secure defaults:
 docker run -d \
   --name prometheus \
   -p 3000:3000 \
-  ... # other options
+  -v prometheus-videos:/app/public/videos \
+  -v prometheus-temp:/app/temp \
+  -v prometheus-data:/app/data \
+  --restart unless-stopped \
   itsashn/prometheus:latest
 ```
 
-### With Reverse Proxy (Recommended for Production)
+### With Cloudflare Tunnel (Recommended)
+
+If you have an existing Cloudflare Tunnel network, connect Prometheus to it with a static IP:
+
+```bash
+# First, ensure your Cloudflare tunnel network exists
+docker network create --subnet=172.18.0.0/16 cloudflareTunnel
+
+# Run Prometheus with the tunnel network and static IP
+docker run -d \
+  --name prometheus \
+  --network cloudflareTunnel \
+  --ip 172.18.0.7 \
+  -p 3000:3000 \
+  -v prometheus-videos:/app/public/videos \
+  -v prometheus-temp:/app/temp \
+  -v prometheus-data:/app/data \
+  --restart unless-stopped \
+  itsashn/prometheus:latest
+```
+
+> **⚠️ Important:** When using `docker run` instead of `docker-compose`, you must manually specify `--network` and `--ip` to connect to your existing network. The `docker-compose.yml` settings don't apply to standalone `docker run` commands.
+
+### With Reverse Proxy (Alternative)
 
 ```bash
 # Assuming you have a reverse proxy network
 docker run -d \
   --name prometheus \
   --network proxy-network \
-  ... # other options
+  -v prometheus-videos:/app/public/videos \
+  -v prometheus-temp:/app/temp \
+  -v prometheus-data:/app/data \
+  --restart unless-stopped \
   itsashn/prometheus:latest
 ```
 
