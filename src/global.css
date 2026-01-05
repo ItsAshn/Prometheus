@@ -1,142 +1,232 @@
+/**
+ * =============================================================================
+ * PROMETHEUS GLOBAL STYLESHEET - THEMING GUIDE
+ * =============================================================================
+ *
+ * This file contains all the CSS variables and base styles for the Prometheus
+ * video platform. Community members can customize the look and feel by creating
+ * their own custom CSS through the Admin Dashboard or by modifying this file.
+ *
+ * HOW TO CREATE A CUSTOM THEME:
+ * -----------------------------
+ * 1. Via Admin Dashboard: Go to Admin > Site Configuration > Custom CSS
+ *    Paste your custom CSS overrides there. This CSS is injected after global.css.
+ *
+ * 2. Direct file edit: Modify this global.css file directly and rebuild.
+ *
+ * CSS VARIABLE CATEGORIES:
+ * ------------------------
+ * - Color Palette: Base neutral colors (--neutral-50 to --neutral-950)
+ * - Semantic Colors: Purpose-based colors (--color-background, --color-primary, etc.)
+ * - Status Colors: Success, warning, info states
+ * - Design Tokens: Border radius, spacing, typography
+ * - Shadows: Box shadow presets
+ * - Transitions: Animation timing
+ *
+ * DEFAULT THEME: Typewriter/Terminal
+ * ----------------------------------
+ * The default theme uses monospace fonts and a dark, minimal aesthetic
+ * inspired by terminal interfaces and typewriters. Sharp edges, subtle
+ * borders, and a focus on readability.
+ *
+ * =============================================================================
+ */
+
 :root {
-  /* Color palette - Base colors */
-  --neutral-50: #fafafa;
-  --neutral-100: #f5f5f5;
-  --neutral-200: #e5e5e5;
-  --neutral-300: #d4d4d4;
-  --neutral-400: #a3a3a3;
-  --neutral-500: #737373;
-  --neutral-600: #525252;
-  --neutral-700: #404040;
-  --neutral-800: #262626;
-  --neutral-900: #171717;
-  --neutral-950: #0a0a0a;
+  /* =========================================================================
+   * COLOR PALETTE - Base neutral scale (Terminal-inspired)
+   * =========================================================================
+   * Dark, muted grays with slight warmth for a vintage terminal feel.
+   */
+  --neutral-50: #f5f5f4;
+  --neutral-100: #e7e5e4;
+  --neutral-200: #d6d3d1;
+  --neutral-300: #a8a29e;
+  --neutral-400: #78716c;
+  --neutral-500: #57534e;
+  --neutral-600: #44403c;
+  --neutral-700: #292524;
+  --neutral-800: #1c1917;
+  --neutral-900: #0c0a09;
+  --neutral-950: #050403;
 
-  /* Semantic color tokens - Light theme - Modern minimalist palette */
-  --color-background: #ffffff;
-  --color-foreground: #1a202c;
+  /* =========================================================================
+   * SEMANTIC COLOR TOKENS - Light Theme (Typewriter style)
+   * =========================================================================
+   * Clean, paper-like background with ink-dark text. Minimal color accents.
+   */
+
+  /* Background & Foreground - Paper and ink */
+  --color-background: #faf9f7; /* Warm paper white */
+  --color-foreground: #1c1917; /* Near-black ink */
+
+  /* Card colors - Slightly elevated paper */
   --color-card: #ffffff;
-  --color-card-foreground: #1a202c;
+  --color-card-foreground: #1c1917;
+
+  /* Popover colors - Dropdowns, tooltips, menus */
   --color-popover: #ffffff;
-  --color-popover-foreground: #1a202c;
-  --color-primary: #667eea;
-  --color-primary-hover: #5a67d8;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f7fafc;
-  --color-secondary-foreground: #1a202c;
-  --color-muted: #edf2f7;
-  --color-muted-foreground: #718096;
-  --color-accent: #e6fffa;
-  --color-accent-foreground: #234e52;
-  --color-destructive: #f56565;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e2e8f0;
-  --color-input: #edf2f7;
-  --color-ring: #667eea;
-  --color-text: #2d3748;
-  --color-text-inverted: #ffffff;
+  --color-popover-foreground: #1c1917;
 
-  /* Semantic color shortcuts */
-  --success: #48bb78;
-  --success-foreground: #f0fff4;
-  --warning: #ed8936;
-  --warning-foreground: #fffaf0;
-  --info: #4299e1;
-  --info-foreground: #ebf8ff;
+  /* Primary colors - Subtle blue-gray accent */
+  --color-primary: #57534e; /* Muted stone */
+  --color-primary-hover: #44403c; /* Darker on hover */
+  --color-primary-foreground: #faf9f7; /* Light text on primary */
 
-  /* Design tokens - Smooth rounded corners */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-full: 9999px;
+  /* Secondary colors - Subtle backgrounds */
+  --color-secondary: #f5f5f4;
+  --color-secondary-foreground: #1c1917;
 
-  /* Spacing scale */
+  /* Muted colors - Faded typewriter ink */
+  --color-muted: #e7e5e4;
+  --color-muted-foreground: #78716c;
+
+  /* Accent colors - Subtle highlight */
+  --color-accent: #f5f5f4;
+  --color-accent-foreground: #292524;
+
+  /* Destructive colors - Faded red ink */
+  --color-destructive: #b91c1c;
+  --color-destructive-foreground: #fef2f2;
+
+  /* Border & Input colors - Typewriter ruled lines */
+  --color-border: #d6d3d1; /* Subtle rule lines */
+  --color-input: #faf9f7; /* Paper background */
+  --color-ring: #78716c; /* Focus ring */
+
+  /* Text colors */
+  --color-text: #292524; /* Dark ink */
+  --color-text-inverted: #faf9f7; /* Light text */
+
+  /* =========================================================================
+   * STATUS COLORS - Muted, typewriter-appropriate
+   * =========================================================================
+   */
+  --success: #166534;
+  --success-foreground: #f0fdf4;
+  --warning: #a16207;
+  --warning-foreground: #fefce8;
+  --info: #1e40af;
+  --info-foreground: #eff6ff;
+
+  /* =========================================================================
+   * DESIGN TOKENS - Border Radius (Sharp, mechanical edges)
+   * =========================================================================
+   * Typewriter aesthetic: sharp corners, no rounded edges.
+   */
+  --radius-sm: 0; /* Sharp edges */
+  --radius-md: 0; /* Sharp edges */
+  --radius-lg: 2px; /* Barely perceptible */
+  --radius-xl: 2px; /* Barely perceptible */
+  --radius-2xl: 4px; /* Subtle rounding */
+  --radius-full: 9999px; /* Only for specific circular elements */
+
+  /* =========================================================================
+   * SPACING SCALE
+   * =========================================================================
+   * Consistent spacing values used for margins, padding, and gaps.
+   */
   --spacing-0: 0;
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-  --spacing-10: 2.5rem;
-  --spacing-12: 3rem;
-  --spacing-16: 4rem;
-  --spacing-20: 5rem;
-  --spacing-24: 6rem;
+  --spacing-1: 0.25rem; /* 4px */
+  --spacing-2: 0.5rem; /* 8px */
+  --spacing-3: 0.75rem; /* 12px */
+  --spacing-4: 1rem; /* 16px */
+  --spacing-5: 1.25rem; /* 20px */
+  --spacing-6: 1.5rem; /* 24px */
+  --spacing-8: 2rem; /* 32px */
+  --spacing-10: 2.5rem; /* 40px */
+  --spacing-12: 3rem; /* 48px */
+  --spacing-16: 4rem; /* 64px */
+  --spacing-20: 5rem; /* 80px */
+  --spacing-24: 6rem; /* 96px */
 
-  /* Typography scale */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 1.875rem;
-  --font-size-4xl: 2.25rem;
+  /* =========================================================================
+   * TYPOGRAPHY SCALE
+   * =========================================================================
+   * Font sizes for consistent text hierarchy.
+   */
+  --font-size-xs: 0.75rem; /* 12px - Captions, labels */
+  --font-size-sm: 0.875rem; /* 14px - Small text */
+  --font-size-base: 1rem; /* 16px - Body text */
+  --font-size-lg: 1.125rem; /* 18px - Large body */
+  --font-size-xl: 1.25rem; /* 20px - Subheadings */
+  --font-size-2xl: 1.5rem; /* 24px - Headings */
+  --font-size-3xl: 1.875rem; /* 30px - Large headings */
+  --font-size-4xl: 2.25rem; /* 36px - Hero headings */
 
-  /* Font weights */
+  /* Font weights - Monospace typically uses fewer weight variations */
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /* Line heights */
-  --line-height-tight: 1.25;
-  --line-height-normal: 1.5;
-  --line-height-relaxed: 1.75;
+  /* Line heights - Slightly increased for monospace readability */
+  --line-height-tight: 1.3; /* Headings */
+  --line-height-normal: 1.6; /* Body text */
+  --line-height-relaxed: 1.8; /* Loose text */
 
-  /* Shadows - Softer, more subtle */
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-md:
-    0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-lg:
-    0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  /* =========================================================================
+   * SHADOWS - Minimal, flat design
+   * =========================================================================
+   * Subtle shadows for a clean, typewriter aesthetic.
+   */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 8px 10px -2px rgba(0, 0, 0, 0.1);
 
-  /* Transitions - Smooth and elegant */
-  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  /* =========================================================================
+   * TRANSITIONS
+   * =========================================================================
+   * Animation timing presets for smooth interactions.
+   */
+  --transition-fast: all 0.15s ease;
+  --transition-normal: all 0.2s ease;
+  --transition-slow: all 0.3s ease;
 }
 
+/* =============================================================================
+ * DARK THEME (Terminal Mode)
+ * =============================================================================
+ * Dark mode with a terminal/console aesthetic.
+ */
 [data-theme="dark"] {
-  /* Dark theme semantic colors - Modern dark mode */
-  --color-background: #0f172a;
-  --color-foreground: #f1f5f9;
-  --color-card: #1e293b;
-  --color-card-foreground: #f1f5f9;
-  --color-popover: #1e293b;
-  --color-popover-foreground: #f1f5f9;
-  --color-primary: #818cf8;
-  --color-primary-hover: #6366f1;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #334155;
-  --color-secondary-foreground: #f1f5f9;
-  --color-muted: #334155;
-  --color-muted-foreground: #94a3b8;
-  --color-accent: #0f766e;
-  --color-accent-foreground: #ccfbf1;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #334155;
-  --color-input: #334155;
-  --color-ring: #818cf8;
-  --color-text: #cbd5e1;
-  --color-text-inverted: #1e293b;
+  --color-background: #0c0a09; /* Deep terminal black */
+  --color-foreground: #e7e5e4; /* Soft white text */
+  --color-card: #1c1917; /* Elevated dark surface */
+  --color-card-foreground: #e7e5e4;
+  --color-popover: #1c1917;
+  --color-popover-foreground: #e7e5e4;
+  --color-primary: #a8a29e; /* Muted stone accent */
+  --color-primary-hover: #d6d3d1; /* Lighter on hover */
+  --color-primary-foreground: #0c0a09;
+  --color-secondary: #292524;
+  --color-secondary-foreground: #e7e5e4;
+  --color-muted: #292524;
+  --color-muted-foreground: #78716c;
+  --color-accent: #292524;
+  --color-accent-foreground: #d6d3d1;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #fef2f2;
+  --color-border: #44403c; /* Subtle terminal borders */
+  --color-input: #1c1917;
+  --color-ring: #78716c;
+  --color-text: #d6d3d1;
+  --color-text-inverted: #0c0a09;
 
-  /* Shadows in dark mode - More subtle */
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  /* Dark mode shadows - Very subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 4px 0 rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 8px 10px -2px rgba(0, 0, 0, 0.5);
 }
 
+/* =============================================================================
+ * BASE STYLES
+ * =============================================================================
+ */
 * {
   box-sizing: border-box;
 }
@@ -145,15 +235,21 @@ body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+    "JetBrains Mono",
+    "Fira Code",
+    "SF Mono",
+    "Cascadia Code",
+    "Source Code Pro",
+    "IBM Plex Mono",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    Monaco,
+    "Courier New",
+    monospace;
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+  letter-spacing: -0.01em;
   margin: 0;
   padding: 0;
   transition: var(--transition-fast);
@@ -161,7 +257,43 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===== ACCESSIBILITY ===== */
+/* Headings use slightly tighter letter-spacing */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.02em;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Links with typewriter underline style */
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Code blocks inherit monospace (already mono, but ensure consistency) */
+code,
+pre,
+kbd,
+samp {
+  font-family: inherit;
+}
+
+/* =============================================================================
+ * ACCESSIBILITY
+ * =============================================================================
+ * These styles ensure the app is accessible for keyboard and screen reader users.
+ */
 /* Improved focus styles for keyboard navigation */
 a:focus-visible,
 button:focus-visible,

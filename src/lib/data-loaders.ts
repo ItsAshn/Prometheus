@@ -15,7 +15,6 @@ export const loadSiteConfigServer = server$(async function () {
       aboutText: string;
       customCss: string;
       lastUpdated: string;
-      selectedTemplate?: string;
       bannerImage?: string;
       avatarImage?: string;
     }
@@ -49,7 +48,6 @@ export const loadSiteConfigServer = server$(async function () {
       channelDescription: config.channelDescription,
       aboutText: config.aboutText,
       lastUpdated: config.lastUpdated,
-      selectedTemplate: config.selectedTemplate,
       bannerImage: config.bannerImage || "",
       avatarImage: config.avatarImage || "",
     };

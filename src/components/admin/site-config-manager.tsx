@@ -1,11 +1,7 @@
 import { component$, useSignal, useStore, useTask$, $ } from "@builder.io/qwik";
 import { server$ } from "@builder.io/qwik-city";
 import { LuPalette, LuAlertTriangle, LuBarChart } from "@qwikest/icons/lucide";
-import {
-  getThemeConfig,
-  applyThemeTemplate,
-  applyCustomCSS,
-} from "~/lib/theme-utils";
+import { getThemeConfig, applyCustomCSS } from "~/lib/theme-utils";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 import {
   readFileSync,
@@ -23,7 +19,6 @@ interface SiteConfig {
   channelDescription: string;
   aboutText?: string;
   customCss?: string;
-  selectedTemplate?: string;
   bannerImage?: string;
   avatarImage?: string;
   lastUpdated: string;
@@ -48,7 +43,6 @@ const DEFAULT_CONFIG: SiteConfig = {
   aboutText:
     "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
   customCss: "",
-  selectedTemplate: "modern",
   bannerImage: "",
   avatarImage: "",
   lastUpdated: new Date().toISOString(),
@@ -106,7 +100,6 @@ export const SiteConfigManager = component$(() => {
   const channelDescription = useSignal("");
   const aboutText = useSignal("");
   const customCss = useSignal("");
-  const selectedTemplate = useSignal("modern");
   const bannerImage = useSignal("");
   const avatarImage = useSignal("");
   const isUploadingBanner = useSignal(false);
@@ -143,7 +136,6 @@ export const SiteConfigManager = component$(() => {
     channelDescription: string;
     aboutText: string;
     customCss: string;
-    selectedTemplate: string;
     bannerImage: string;
     avatarImage: string;
   }) {
@@ -174,7 +166,6 @@ export const SiteConfigManager = component$(() => {
         channelDescription: configInput.channelDescription.trim(),
         aboutText: configInput.aboutText ? configInput.aboutText.trim() : "",
         customCss: configInput.customCss || "",
-        selectedTemplate: configInput.selectedTemplate || "modern",
         bannerImage: configInput.bannerImage || "",
         avatarImage: configInput.avatarImage || "",
         lastUpdated: new Date().toISOString(),
@@ -206,7 +197,6 @@ export const SiteConfigManager = component$(() => {
       channelDescription.value = configResult.config.channelDescription;
       aboutText.value = configResult.config.aboutText || "";
       customCss.value = themeConfig.customCss || "";
-      selectedTemplate.value = themeConfig.selectedTemplate || "modern";
       bannerImage.value = configResult.config.bannerImage || "";
       avatarImage.value = configResult.config.avatarImage || "";
     } else {
@@ -232,7 +222,6 @@ export const SiteConfigManager = component$(() => {
         channelDescription: channelDescription.value.trim(),
         aboutText: aboutText.value.trim(),
         customCss: customCss.value,
-        selectedTemplate: selectedTemplate.value,
         bannerImage: bannerImage.value,
         avatarImage: avatarImage.value,
       };
@@ -268,28 +257,6 @@ export const SiteConfigManager = component$(() => {
       }
     } catch {
       store.error = "Failed to apply CSS";
-    } finally {
-      store.isSaving = false;
-    }
-  });
-
-  const handleTemplateChange = $(async (templateName: string) => {
-    selectedTemplate.value = templateName;
-    store.error = "";
-    store.successMessage = "";
-    store.isSaving = true;
-
-    try {
-      const result = await applyThemeTemplate(templateName);
-
-      if (result.success) {
-        store.successMessage = `${templateName.charAt(0).toUpperCase() + templateName.slice(1)} theme applied successfully! Please refresh the page to see changes.`;
-        customCss.value = ""; // Clear custom CSS when applying a template
-      } else {
-        store.error = result.error || "Failed to apply template";
-      }
-    } catch {
-      store.error = "Failed to apply template";
     } finally {
       store.isSaving = false;
     }
@@ -513,97 +480,19 @@ export const SiteConfigManager = component$(() => {
 
       <div class="admin-card">
         <h3>
-          <LuPalette /> Theme Templates
-        </h3>
-        <p>Choose from our predefined themes for quick styling changes.</p>
-
-        <div class="form-group">
-          <label>Select Theme</label>
-          <div class="template-grid">
-            <div
-              class={`template-option ${selectedTemplate.value === "retro" ? "selected" : ""}`}
-            >
-              <div class="template-preview retro-preview">
-                <div class="preview-header"></div>
-                <div class="preview-content">
-                  <div class="preview-card"></div>
-                  <div class="preview-card"></div>
-                </div>
-              </div>
-              <h4>Retro Theme</h4>
-              <p>
-                Pixelated retro gaming aesthetic with bold colors and sharp
-                edges.
-              </p>
-              <button
-                type="button"
-                onClick$={() => handleTemplateChange("retro")}
-                class={`template-btn ${selectedTemplate.value === "retro" ? "active" : ""}`}
-                disabled={store.isSaving}
-              >
-                {selectedTemplate.value === "retro" ? "Active" : "Apply"}
-              </button>
-            </div>
-
-            <div
-              class={`template-option ${selectedTemplate.value === "modern" ? "selected" : ""}`}
-            >
-              <div class="template-preview modern-preview">
-                <div class="preview-header"></div>
-                <div class="preview-content">
-                  <div class="preview-card"></div>
-                  <div class="preview-card"></div>
-                </div>
-              </div>
-              <h4>Modern Theme</h4>
-              <p>
-                Sleek minimalist design with rounded corners and subtle shadows.
-              </p>
-              <button
-                type="button"
-                onClick$={() => handleTemplateChange("modern")}
-                class={`template-btn ${selectedTemplate.value === "modern" ? "active" : ""}`}
-                disabled={store.isSaving}
-              >
-                {selectedTemplate.value === "modern" ? "Active" : "Apply"}
-              </button>
-            </div>
-
-            <div
-              class={`template-option ${selectedTemplate.value === "cyberpunk" ? "selected" : ""}`}
-            >
-              <div class="template-preview cyberpunk-preview">
-                <div class="preview-header"></div>
-                <div class="preview-content">
-                  <div class="preview-card"></div>
-                  <div class="preview-card"></div>
-                </div>
-              </div>
-              <h4>Cyberpunk Theme</h4>
-              <p>
-                Futuristic neon-lit aesthetic with glowing effects and dark
-                backgrounds.
-              </p>
-              <button
-                type="button"
-                onClick$={() => handleTemplateChange("cyberpunk")}
-                class={`template-btn ${selectedTemplate.value === "cyberpunk" ? "active" : ""}`}
-                disabled={store.isSaving}
-              >
-                {selectedTemplate.value === "cyberpunk" ? "Active" : "Apply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="admin-card">
-        <h3>
           <LuPalette /> Custom CSS
         </h3>
         <p>
-          Paste your custom CSS here to override the default styling. This will
-          replace the entire global.css file.
+          Paste your custom CSS here to override the default styling. This CSS
+          is injected after global.css to customize the appearance. See the{" "}
+          <a
+            href="https://github.com/your-repo/prometheus#theming"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            theming documentation
+          </a>{" "}
+          for available CSS variables.
         </p>
 
         <div class="form-group">
@@ -647,10 +536,6 @@ export const SiteConfigManager = component$(() => {
           </p>
           <p>
             <strong>Current Channel:</strong> {store.config.channelName}
-          </p>
-          <p>
-            <strong>Active Theme:</strong>{" "}
-            {store.config.selectedTemplate || "retro"}
           </p>
           <p>
             <strong>Has Custom CSS:</strong>{" "}

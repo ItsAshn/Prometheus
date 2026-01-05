@@ -17,7 +17,6 @@ interface SiteConfig {
   channelDescription: string;
   aboutText?: string;
   customCss?: string;
-  selectedTemplate?: string;
   bannerImage?: string;
   avatarImage?: string;
   lastUpdated: string;
@@ -31,7 +30,6 @@ const DEFAULT_CONFIG: SiteConfig = {
   aboutText:
     "Welcome to my channel! This is a self-hosted video streaming platform where I share my content. All videos are hosted on my own infrastructure, ensuring complete privacy and control.",
   customCss: "",
-  selectedTemplate: "modern",
   bannerImage: "",
   avatarImage: "",
   lastUpdated: new Date().toISOString(),
@@ -234,7 +232,6 @@ export const onPost: RequestHandler = async ({ json, request, cookie }) => {
       channelDescription,
       aboutText,
       customCss,
-      selectedTemplate,
       bannerImage,
       avatarImage,
     } = body;
@@ -250,7 +247,6 @@ export const onPost: RequestHandler = async ({ json, request, cookie }) => {
       channelDescription: channelDescription.trim(),
       aboutText: aboutText ? aboutText.trim() : "",
       customCss: customCss || "",
-      selectedTemplate: selectedTemplate || "modern",
       bannerImage: bannerImage || "",
       avatarImage: avatarImage || "",
       lastUpdated: new Date().toISOString(),

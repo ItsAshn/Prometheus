@@ -8,7 +8,6 @@ import {
 } from "@builder.io/qwik";
 import { routeLoader$ } from "@builder.io/qwik-city";
 import { LuMonitor, LuUser, LuMenu, LuX } from "@qwikest/icons/lucide";
-import { ThemeToggle } from "~/components/theme-toggle/theme-toggle";
 import { Footer } from "~/components/footer/footer";
 import { SearchBar } from "~/components/search/search-bar";
 import {
@@ -133,7 +132,6 @@ export default component$(() => {
           </div>
 
           <div class="header-right">
-            <ThemeToggle />
             {auth.value.isAuthenticated ? (
               <>
                 <div class="user-info" aria-label="User information">
