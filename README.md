@@ -174,6 +174,24 @@ JWT_SECRET=auto-generated-during-build  # Automatically handled!
 > **⚠️ Security:** Use strong, unique passwords in production!  
 > **💡 How it works:** JWT secrets auto-generate before every build/dev/serve command!
 
+## 🔄 Updates
+
+**Easy Updates:**
+```bash
+# Pull latest version and restart
+bash scripts/update.sh
+```
+
+**Auto-Updates:**
+Enable Watchtower to automatically check for updates daily:
+```bash
+docker-compose --profile auto-update up -d
+```
+
+📖 **For complete update instructions, backup procedures, and troubleshooting, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+---
+
 ## 📖 Usage
 
 ### Get Started
