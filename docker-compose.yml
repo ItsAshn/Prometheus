@@ -1,5 +1,13 @@
 version: "3.8"
 
+# PROMETHEUS DOCKER COMPOSE
+# ==========================
+# 
+# UPDATING PROMETHEUS:
+# - Method 1 (Recommended): bash scripts/update.sh
+# - Method 2: docker-compose pull && docker-compose up -d --force-recreate
+# - Method 3 (Auto-updates): docker-compose --profile auto-update up -d
+#
 # SECURITY NOTES:
 # - Never commit .env files with real secrets to Git
 # - Change default passwords before deploying
@@ -60,6 +68,26 @@ services:
     labels:
       - "com.prometheus.description=Self-hosted video streaming platform"
       # Version info is available via the API at /api/version
+
+  # Watchtower: Automatic Docker Image Updates
+  # Enable with: docker-compose --profile auto-update up -d
+  # Disable with: docker-compose --profile auto-update down
+  watchtower:
+    image: containrrr/watchtower
+    container_name: prometheus-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true # Remove old images after update
+      - WATCHTOWER_POLL_INTERVAL=86400 # Check for updates daily (24 hours)
+      - WATCHTOWER_INCLUDE_STOPPED=false # Only update running containers
+      - WATCHTOWER_INCLUDE_RESTARTING=false # Skip containers that are restarting
+    command: prometheus # Only monitor the prometheus container
+    profiles:
+      - auto-update # Only runs when explicitly enabled
+    networks:
+      - cloudflareTunnel
 
 volumes:
   video-data:

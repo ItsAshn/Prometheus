@@ -36,7 +36,8 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:restart": "docker-compose restart",
-    "docker:update": "bash scripts/update-docker.sh",
+    "docker:update": "bash scripts/update.sh",
+    "docker:update-with-backup": "docker-compose exec prometheus tar czf /app/data/backup-$(date +%Y%m%d-%H%M%S).tar.gz /app/public/videos /app/data 2>/dev/null || true && npm run docker:update",
     "docker:update:win": "powershell -ExecutionPolicy Bypass -File scripts/update-docker.ps1",
     "docker:push": "docker push itsashn/prometheus:latest",
     "docker:push:version": "docker push itsashn/prometheus:%npm_package_version% && docker push itsashn/prometheus:latest"
