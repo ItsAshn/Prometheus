@@ -71,13 +71,15 @@ services:
 
   # Watchtower: Automatic Docker Image Updates
   # Enable with: docker-compose --profile auto-update up -d
-  # Disable with: docker-compose --profile auto-update down
+  # Disable with: docker-compose stop watchtower
+  # ⚠️ SECURITY WARNING: Watchtower requires access to Docker socket, granting root-level access.
+  #    Only use in trusted environments.
   watchtower:
     image: containrrr/watchtower
     container_name: prometheus-watchtower
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock # ⚠️ Root-level access to Docker daemon
     environment:
       - WATCHTOWER_CLEANUP=true # Remove old images after update
       - WATCHTOWER_POLL_INTERVAL=86400 # Check for updates daily (24 hours)

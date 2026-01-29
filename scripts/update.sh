@@ -43,22 +43,58 @@ fi
 
 # Wait for service to be healthy
 echo "⏳ Waiting for service to be healthy..."
-sleep 10
+MAX_RETRIES=30
+RETRY_COUNT=0
 
-# Check if container is running
-if docker ps | grep -q "$CONTAINER_NAME"; then
-    echo "✅ Update successful!"
-    echo "🌐 Prometheus is running at http://localhost:3000"
-    echo ""
-    echo "📊 Container Info:"
-    docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-    echo ""
-    echo "💡 Rollback instructions:"
-    echo "   If something went wrong, you can rollback by:"
-    echo "   1. docker-compose down"
-    echo "   2. Edit docker-compose.yml to use a specific version tag"
-    echo "   3. docker-compose up -d"
-else
-    echo "❌ Update failed! Check logs with: docker-compose logs prometheus"
-    exit 1
-fi
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    sleep 2
+    
+    # Check if container is running
+    if docker ps | grep -q "$CONTAINER_NAME"; then
+        # Check health status if healthcheck is configured
+        HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME" 2>/dev/null || echo "none")
+        
+        if [ "$HEALTH_STATUS" = "healthy" ]; then
+            echo "✅ Update successful!"
+            echo "🌐 Prometheus is running at http://localhost:3000"
+            echo ""
+            echo "📊 Container Info:"
+            docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            echo ""
+            echo "💡 Rollback instructions:"
+            echo "   If something went wrong, you can rollback by:"
+            echo "   1. docker-compose down"
+            echo "   2. Edit docker-compose.yml to use a specific version tag"
+            echo "   3. docker-compose up -d"
+            exit 0
+        elif [ "$HEALTH_STATUS" = "unhealthy" ]; then
+            echo "❌ Health check failed. Container is unhealthy."
+            echo "Check logs with: docker-compose logs prometheus"
+            exit 1
+        elif [ "$HEALTH_STATUS" = "none" ]; then
+            # No healthcheck configured, just verify it's running
+            echo "✅ Update successful!"
+            echo "🌐 Prometheus is running at http://localhost:3000"
+            echo ""
+            echo "📊 Container Info:"
+            docker ps --filter "name=$CONTAINER_NAME" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            echo ""
+            echo "💡 Rollback instructions:"
+            echo "   If something went wrong, you can rollback by:"
+            echo "   1. docker-compose down"
+            echo "   2. Edit docker-compose.yml to use a specific version tag"
+            echo "   3. docker-compose up -d"
+            exit 0
+        fi
+    else
+        echo "❌ Container is not running"
+        exit 1
+    fi
+    
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "⏳ Waiting for container to be healthy... ($RETRY_COUNT/$MAX_RETRIES)"
+done
+
+echo "⚠️  Health check timeout. Container may still be starting."
+echo "Check logs with: docker-compose logs prometheus"
+exit 1

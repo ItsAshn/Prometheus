@@ -147,12 +147,20 @@ See [Auto-Updates with Watchtower](#auto-updates-with-watchtower) section below.
 #### Backup Before Update (Recommended)
 
 ```bash
-# Create timestamped backup
-docker-compose exec prometheus tar czf /app/data/backup-$(date +%Y%m%d-%H%M%S).tar.gz /app/public/videos /app/data
+# Create timestamped backup inside container
+docker-compose exec prometheus sh -c 'tar czf /app/data/backup-$(date +%Y%m%d-%H%M%S).tar.gz /app/public/videos'
 
-# Or use the npm script
+# Copy backup to host (optional)
+docker cp prometheus:/app/data/backup-TIMESTAMP.tar.gz ./backups/
+
+# Or use the npm script (creates backup inside container)
 npm run docker:update-with-backup
 ```
+
+**Note:** The backup is created inside the container at `/app/data/`. To access it from the host, either:
+1. Use `docker cp` to copy it out (as shown above)
+2. Map `/app/data` to a host volume in docker-compose.yml
+3. Access it through the running container
 
 #### Manual Volume Backup
 
@@ -214,13 +222,16 @@ docker-compose logs -f watchtower
 - ✅ Only monitors the `prometheus` container
 - ✅ Includes automatic rollback on failure
 
+**⚠️ Security Note:**
+Watchtower requires access to the Docker socket (`/var/run/docker.sock`), which provides root-level access to the Docker daemon. This is necessary for Watchtower to manage containers but represents a significant security consideration. Only enable Watchtower in trusted environments.
+
 ### Disabling Auto-Updates
 
 ```bash
-# Stop Watchtower service
-docker-compose --profile auto-update down watchtower
+# Stop Watchtower service while keeping Prometheus running
+docker-compose stop watchtower
 
-# Or restart without the profile
+# Or restart without the auto-update profile
 docker-compose up -d
 ```
 
@@ -264,7 +275,8 @@ If an update causes issues, you can rollback to a previous version.
 docker-compose down
 
 # Edit docker-compose.yml and change the image tag to a specific version
-# For example: image: itsashn/prometheus:1.0.0
+# Change: image: ${IMAGE_NAME:-itsashn/prometheus}:${IMAGE_TAG:-latest}
+# To:     image: itsashn/prometheus:1.0.0  (or your desired version)
 
 # Start with the older version
 docker-compose up -d
@@ -274,31 +286,19 @@ docker-compose ps
 docker-compose logs -f prometheus
 ```
 
-### Rollback Using Docker Tag
+### Rollback Without Compose File Changes
+
+Alternatively, use environment variables:
 
 ```bash
-# List available tags on Docker Hub
-curl -s https://registry.hub.docker.com/v2/repositories/itsashn/prometheus/tags/ | grep name
-
-# Or visit: https://hub.docker.com/r/itsashn/prometheus/tags
-
-# Pull specific version
-docker pull itsashn/prometheus:1.0.0
-
 # Stop current container
-docker-compose stop prometheus
+docker-compose down
 
-# Run specific version
-docker run -d \
-  --name prometheus \
-  --network cloudflareTunnel \
-  --ip 172.18.0.7 \
-  -p 3000:3000 \
-  -v prometheus-videos:/app/public/videos \
-  -v prometheus-temp:/app/temp \
-  -v prometheus-data:/app/data \
-  --restart unless-stopped \
-  itsashn/prometheus:1.0.0
+# Start with specific version using environment variable
+IMAGE_TAG=1.0.0 docker-compose up -d
+
+# Verify rollback
+docker-compose ps
 ```
 
 ### Rollback from Backup
@@ -331,27 +331,21 @@ Visit: http://localhost:3000/api/version
 #### Via Docker
 
 ```bash
-# Check running container version
-docker inspect prometheus | grep -i version
+# Check running container version via environment
+docker exec prometheus printenv | grep VERSION
 
-# Check container labels
-docker inspect prometheus --format='{{.Config.Labels}}'
-```
-
-#### Via Script
-
-```bash
-bash scripts/check-version.sh
+# Check image details
+docker inspect itsashn/prometheus:latest | grep -A5 Labels
 ```
 
 ### Check Available Updates
 
 ```bash
-# Pull latest image info (doesn't download)
-docker pull --dry-run itsashn/prometheus:latest
+# Check for new image versions on Docker Hub
+docker pull itsashn/prometheus:latest && docker images | grep prometheus
 
-# Or check Docker Hub
-curl -s https://registry.hub.docker.com/v2/repositories/itsashn/prometheus/tags/latest | jq
+# Check image ID to see if it changed
+docker images --no-trunc | grep itsashn/prometheus
 ```
 
 ---
@@ -425,8 +419,14 @@ ls -la /var/run/docker.sock
 
 **Solution:**
 ```bash
-# Check Watchtower is monitoring correct container
-docker-compose exec watchtower watchtower --run-once --debug
+# Check if Watchtower is running
+docker ps | grep watchtower
+
+# View Watchtower logs for debugging
+docker logs prometheus-watchtower
+
+# Force a manual check (restart Watchtower)
+docker-compose restart watchtower
 
 # Verify image has updates available
 docker pull itsashn/prometheus:latest
