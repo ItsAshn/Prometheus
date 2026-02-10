@@ -103,9 +103,6 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/public ./public
 
-# Copy source files needed for runtime (theme files are read dynamically)
-COPY --from=builder /app/src/themes ./src/themes
-
 # Copy scripts and configuration files
 COPY scripts ./scripts
 COPY qwik.env.d.ts tsconfig.json ./
@@ -115,7 +112,6 @@ RUN echo "=== Verifying production files ===" && \
     (ls -la dist/build/ && echo "✓ dist/build copied") || echo "✗ WARNING: dist/build missing!" && \
     (ls -la dist/assets/ && echo "✓ dist/assets copied") || echo "✗ WARNING: dist/assets missing!" && \
     (ls -la server/ && echo "✓ server copied") || echo "✗ WARNING: server missing!" && \
-    (ls -la src/themes/ && echo "✓ src/themes copied") || echo "✗ WARNING: src/themes missing!" && \
     echo "=== Verification complete ==="
 
 # Create necessary directories with proper permissions
