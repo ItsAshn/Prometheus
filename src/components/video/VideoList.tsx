@@ -278,12 +278,23 @@ export default component$<VideoListProps>((props) => {
     const handleVideoUploaded = () => {
       loadVideos(true);
     };
+    const handleProcessingUpdated = () => {
+      loadVideos(true);
+    };
 
     if (typeof window !== "undefined") {
       window.addEventListener("video-uploaded", handleVideoUploaded);
+      window.addEventListener(
+        "video-processing-updated",
+        handleProcessingUpdated
+      );
 
       cleanup(() => {
         window.removeEventListener("video-uploaded", handleVideoUploaded);
+        window.removeEventListener(
+          "video-processing-updated",
+          handleProcessingUpdated
+        );
       });
     }
   });
