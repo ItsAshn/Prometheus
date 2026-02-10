@@ -33,10 +33,11 @@ export const ProcessingStatus = component$(() => {
         if (typeof window !== "undefined") {
           const nextStatusMap: Record<string, ProcessingStatus["status"]> = {};
           let shouldRefreshLibrary = false;
+          const previousStatusMap = lastStatusById.value;
 
           nextVideos.forEach((video) => {
             nextStatusMap[video.videoId] = video.status;
-            const previousStatus = lastStatusById.value[video.videoId];
+            const previousStatus = previousStatusMap[video.videoId];
 
             if (
               hasInitialized.value &&
@@ -47,6 +48,15 @@ export const ProcessingStatus = component$(() => {
               shouldRefreshLibrary = true;
             }
           });
+
+          if (
+            hasInitialized.value &&
+            Object.keys(previousStatusMap).some(
+              (videoId) => !nextStatusMap[videoId]
+            )
+          ) {
+            shouldRefreshLibrary = true;
+          }
 
           lastStatusById.value = nextStatusMap;
           if (!hasInitialized.value) {
