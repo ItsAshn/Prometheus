@@ -7,8 +7,9 @@ version: "3.8"
 
 services:
   prometheus:
-    # Pull pre-built image from Docker Hub
-    # Version info is baked into the image during CI/CD build
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: ${IMAGE_NAME:-itsashn/prometheus}:${IMAGE_TAG:-latest}
 
     container_name: prometheus
