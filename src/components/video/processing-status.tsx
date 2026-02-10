@@ -41,7 +41,7 @@ export const ProcessingStatus = component$(() => {
 
             if (
               hasInitialized.value &&
-              previousStatus &&
+              typeof previousStatus !== "undefined" &&
               previousStatus !== video.status &&
               (video.status === "completed" || video.status === "failed")
             ) {
