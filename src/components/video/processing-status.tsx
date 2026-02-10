@@ -14,6 +14,10 @@ interface ProcessingStatus {
 export const ProcessingStatus = component$(() => {
   const processingVideos = useSignal<ProcessingStatus[]>([]);
   const isLoading = useSignal(false);
+  const lastStatusById = useSignal<Record<string, ProcessingStatus["status"]>>(
+    {}
+  );
+  const hasInitialized = useSignal(false);
 
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ track, cleanup }) => {
@@ -23,7 +27,47 @@ export const ProcessingStatus = component$(() => {
       try {
         isLoading.value = true;
         const data = await loadProcessingStatusServer();
-        processingVideos.value = data || [];
+        const nextVideos = data || [];
+        processingVideos.value = nextVideos;
+
+        if (typeof window !== "undefined") {
+          const nextStatusMap: Record<string, ProcessingStatus["status"]> = {};
+          let shouldRefreshLibrary = false;
+          const previousStatusMap = lastStatusById.value;
+
+          nextVideos.forEach((video) => {
+            nextStatusMap[video.videoId] = video.status;
+            const previousStatus = previousStatusMap[video.videoId];
+
+            if (
+              hasInitialized.value &&
+              typeof previousStatus !== "undefined" &&
+              previousStatus !== video.status &&
+              (video.status === "completed" || video.status === "failed")
+            ) {
+              shouldRefreshLibrary = true;
+            }
+          });
+
+          // Refreshes when a video disappears from the status list (removed).
+          if (
+            hasInitialized.value &&
+            Object.keys(previousStatusMap).some(
+              (videoId) => !nextStatusMap[videoId]
+            )
+          ) {
+            shouldRefreshLibrary = true;
+          }
+
+          lastStatusById.value = nextStatusMap;
+          if (!hasInitialized.value) {
+            hasInitialized.value = true;
+          } else if (shouldRefreshLibrary) {
+            window.dispatchEvent(
+              new CustomEvent("video-processing-updated")
+            );
+          }
+        }
       } catch (error) {
         console.error("Error fetching processing status:", error);
       } finally {
