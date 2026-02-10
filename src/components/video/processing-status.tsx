@@ -49,7 +49,7 @@ export const ProcessingStatus = component$(() => {
             }
           });
 
-          // Refresh when a video disappears from the status list entirely.
+          // Refresh when a video disappears from the status list (removed).
           if (
             hasInitialized.value &&
             Object.keys(previousStatusMap).some(
