@@ -1,13 +1,7 @@
 import type { RequestHandler } from "@builder.io/qwik-city";
-import {
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  mkdirSync,
-  accessSync,
-  constants,
-} from "fs";
+import { readFileSync, existsSync, mkdirSync, accessSync, constants } from "fs";
 import { join } from "path";
+import { atomicWriteJSON } from "~/lib/atomic-file-ops";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 
 const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
@@ -64,7 +58,7 @@ function loadSiteConfig(): SiteConfig {
   return DEFAULT_CONFIG;
 }
 
-function saveSiteConfig(config: SiteConfig): void {
+async function saveSiteConfig(config: SiteConfig): Promise<void> {
   try {
     // Ensure temp directory exists
     const tempDir = join(process.cwd(), "temp");
@@ -81,10 +75,10 @@ function saveSiteConfig(config: SiteConfig): void {
       } catch (mkdirError) {
         console.error(
           "[Site Config] Failed to create temp directory:",
-          mkdirError
+          mkdirError,
         );
         throw new Error(
-          `Cannot create temp directory: ${mkdirError instanceof Error ? mkdirError.message : String(mkdirError)}`
+          `Cannot create temp directory: ${mkdirError instanceof Error ? mkdirError.message : String(mkdirError)}`,
         );
       }
     } else {
@@ -98,25 +92,21 @@ function saveSiteConfig(config: SiteConfig): void {
     } catch (accessError) {
       console.error(
         "[Site Config] Temp directory is not writable:",
-        accessError
+        accessError,
       );
       throw new Error("Temp directory is not writable. Check permissions.");
     }
 
     config.lastUpdated = new Date().toISOString();
-    const jsonString = JSON.stringify(config, null, 2);
-    console.log("[Site Config] Writing config:", jsonString);
+    console.log("[Site Config] Saving config with atomic write:", config);
 
     try {
-      writeFileSync(CONFIG_FILE_PATH, jsonString, {
-        encoding: "utf-8",
-        mode: 0o644,
-      });
+      await atomicWriteJSON(CONFIG_FILE_PATH, config);
       console.log("[Site Config] Config file written successfully");
     } catch (writeError) {
       console.error("[Site Config] Failed to write config file:", writeError);
       throw new Error(
-        `Cannot write config file: ${writeError instanceof Error ? writeError.message : String(writeError)}`
+        `Cannot write config file: ${writeError instanceof Error ? writeError.message : String(writeError)}`,
       );
     }
 
@@ -131,7 +121,7 @@ function saveSiteConfig(config: SiteConfig): void {
       console.log(
         "[Site Config] Verification: File size:",
         writtenContent.length,
-        "bytes"
+        "bytes",
       );
 
       // Verify JSON is valid
@@ -140,7 +130,7 @@ function saveSiteConfig(config: SiteConfig): void {
     } catch (verifyError) {
       console.error("[Site Config] File verification failed:", verifyError);
       throw new Error(
-        `File written but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`
+        `File written but verification failed: ${verifyError instanceof Error ? verifyError.message : String(verifyError)}`,
       );
     }
   } catch (error) {
@@ -153,7 +143,7 @@ function saveSiteConfig(config: SiteConfig): void {
       configPath: CONFIG_FILE_PATH,
     });
     throw new Error(
-      `Failed to save site config: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to save site config: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -186,7 +176,7 @@ export const onPost: RequestHandler = async ({ json, request, cookie }) => {
   console.log("[Site Config] POST request received");
   console.log(
     "[Site Config] Content-Type:",
-    request.headers.get("content-type")
+    request.headers.get("content-type"),
   );
 
   const authCookie = cookie.get(ADMIN_COOKIE_NAME);
@@ -253,7 +243,7 @@ export const onPost: RequestHandler = async ({ json, request, cookie }) => {
     };
 
     console.log("[Site Config] Saving config:", config);
-    saveSiteConfig(config);
+    await saveSiteConfig(config);
     console.log("[Site Config] Config saved successfully");
 
     json(200, {

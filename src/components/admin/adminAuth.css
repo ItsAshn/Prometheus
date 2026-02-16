@@ -594,7 +594,6 @@
   border: 3px solid var(--color-muted);
   border-top: 3px solid var(--color-primary);
   border-radius: var(--radius-full);
-  animation: spin 1s linear infinite;
   margin: 0 auto var(--spacing-4);
 }
 

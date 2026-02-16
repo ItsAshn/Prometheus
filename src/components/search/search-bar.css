@@ -1,10 +1,19 @@
 /* Search Bar */
-.search-bar {
+.search-container {
+  position: relative;
   width: 100%;
   max-width: 500px;
 }
 
+.search-bar {
+  width: 100%;
+}
+
 .search-bar-page {
+  max-width: 100%;
+}
+
+.search-bar-page .search-container {
   max-width: 100%;
 }
 
@@ -129,5 +138,105 @@
   .search-button::before {
     content: "→";
     font-size: var(--font-size-base);
+  }
+}
+
+/* Suggestions Dropdown */
+.suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-2));
+  left: 0;
+  right: 0;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 100;
+  animation: slideDown 0.2s ease;
+}
+
+.suggestions-page {
+  max-width: 100%;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border: none;
+  background: transparent;
+  color: var(--color-foreground);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+
+.suggestion-icon {
+  font-size: 1rem;
+  color: var(--color-muted-foreground);
+  flex-shrink: 0;
+}
+
+.suggestion-item:hover .suggestion-icon,
+.suggestion-item.selected .suggestion-icon {
+  color: inherit;
+}
+
+.suggestion-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-badge {
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Mobile adjustments for suggestions */
+@media (max-width: 768px) {
+  .suggestions-dropdown {
+    max-height: 240px;
+  }
+
+  .suggestion-item {
+    padding: var(--spacing-3);
+    gap: var(--spacing-2);
+  }
+
+  .suggestion-text {
+    font-size: var(--font-size-xs);
   }
 }

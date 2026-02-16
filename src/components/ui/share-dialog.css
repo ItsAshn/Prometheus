@@ -1,0 +1,244 @@
+/* Share Dialog */
+.share-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-4);
+  animation: fadeIn 0.2s ease;
+}
+
+.share-dialog {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-6);
+  max-width: 500px;
+  width: 100%;
+  position: relative;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.share-header {
+  text-align: center;
+  margin-bottom: var(--spacing-6);
+}
+
+.share-icon {
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin: 0 auto var(--spacing-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-dialog h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-foreground);
+  margin: 0 0 var(--spacing-2);
+}
+
+.share-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-muted-foreground);
+  margin: 0;
+}
+
+/* Close Button */
+.share-close {
+  position: absolute;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+  background: none;
+  border: none;
+  padding: var(--spacing-2);
+  cursor: pointer;
+  color: var(--color-muted-foreground);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.share-close:hover {
+  background: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+/* Content */
+.share-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+
+.share-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-foreground);
+  margin-bottom: var(--spacing-2);
+  display: block;
+}
+
+/* Link Section */
+.share-link-input {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.share-input {
+  flex: 1;
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+}
+
+.share-input:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.btn-copy {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border: none;
+  padding: var(--spacing-3);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  min-width: 48px;
+}
+
+.btn-copy:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-copy:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Social Section */
+.share-social-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-3);
+}
+
+.share-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.share-social-btn:hover {
+  background: var(--color-muted);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.share-social-btn:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.share-social-btn svg {
+  font-size: 1.25rem;
+}
+
+/* Social Button Colors */
+.share-social-btn.twitter:hover {
+  background: #1da1f2;
+  color: white;
+  border-color: #1da1f2;
+}
+
+.share-social-btn.facebook:hover {
+  background: #4267b2;
+  color: white;
+  border-color: #4267b2;
+}
+
+.share-social-btn.linkedin:hover {
+  background: #0077b5;
+  color: white;
+  border-color: #0077b5;
+}
+
+.share-social-btn.email:hover {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  border-color: var(--color-primary);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 640px) {
+  .share-dialog {
+    padding: var(--spacing-5);
+    max-width: 100%;
+  }
+
+  .share-social-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .share-backdrop,
+  .share-dialog {
+    animation: none;
+  }
+
+  .share-social-btn:hover {
+    transform: none;
+  }
+}

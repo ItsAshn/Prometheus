@@ -10,6 +10,8 @@ import { routeLoader$ } from "@builder.io/qwik-city";
 import { LuMonitor, LuUser, LuMenu, LuX } from "@qwikest/icons/lucide";
 import { Footer } from "~/components/footer/footer";
 import { SearchBar } from "~/components/search/search-bar";
+import { ToastContainer } from "~/components/ui/toast";
+import { ThemeToggle } from "~/components/ui/theme-toggle";
 import {
   checkAdminAuthServer,
   logoutAdminServer,
@@ -132,6 +134,7 @@ export default component$(() => {
           </div>
 
           <div class="header-right">
+            <ThemeToggle />
             {auth.value.isAuthenticated ? (
               <>
                 <div class="user-info" aria-label="User information">
@@ -217,6 +220,7 @@ export default component$(() => {
       </main>
 
       <Footer channelName={channelName} />
+      <ToastContainer />
     </div>
   );
 });

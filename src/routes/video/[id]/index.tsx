@@ -14,8 +14,11 @@ import {
   LuCalendar,
   LuClapperboard,
   LuClock,
+  LuShare2,
 } from "@qwikest/icons/lucide";
 import { VideoPlayer } from "~/components/video/video-player";
+import { Breadcrumb } from "~/components/ui/breadcrumb";
+import { ShareDialog } from "~/components/ui/share-dialog";
 import type { VideoMetadata } from "~/lib/video/video-processor";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import styles from "./index.css?inline";
@@ -49,6 +52,7 @@ export default component$(() => {
   const videoData = useVideoData();
   const isLoading = useSignal(true);
   const error = useSignal("");
+  const shareDialogOpen = useSignal(false);
 
   useTask$(({ track }) => {
     track(() => videoData.value);
@@ -127,10 +131,23 @@ export default component$(() => {
     <div class="single-video-page">
       <div class="site-container">
         <main class="site-content">
+          <Breadcrumb
+            items={[
+              { label: "Videos", href: "/videos" },
+              { label: video.title },
+            ]}
+          />
+
           <div class="video-navigation">
             <a href="/videos" class="btn btn-secondary">
               ← Back to Videos
             </a>
+            <button
+              onClick$={() => (shareDialogOpen.value = true)}
+              class="btn btn-secondary"
+            >
+              <LuShare2 /> Share
+            </button>
           </div>
 
           <div class="video-header">
@@ -182,27 +199,116 @@ export default component$(() => {
               <LuHome /> Home
             </a>
           </div>
+
+          {/* Share Dialog */}
+          <ShareDialog
+            isOpen={shareDialogOpen.value}
+            onClose$={() => (shareDialogOpen.value = false)}
+            videoTitle={video.title}
+            videoUrl={typeof window !== "undefined" ? window.location.href : ""}
+          />
         </main>
       </div>
     </div>
   );
 });
 
-export const head: DocumentHead = ({ resolveValue }) => {
+export const head: DocumentHead = ({ resolveValue, url }) => {
   const video = resolveValue(useVideoData);
 
+  if (!video) {
+    return {
+      title: "Video Not Found",
+      meta: [
+        {
+          name: "description",
+          content: "Video not found",
+        },
+      ],
+    };
+  }
+
+  // Create structured data for SEO
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: video.title,
+    description: `Watch ${video.title} in ${video.resolution} with HLS streaming`,
+    thumbnailUrl: video.thumbnail || "",
+    uploadDate: video.createdAt,
+    duration: `PT${Math.floor(video.duration)}S`,
+    contentUrl: url.href,
+    embedUrl: url.href,
+    width: video.resolution.split("x")[0] || "1920",
+    height: video.resolution.split("x")[1] || "1080",
+  };
+
   return {
-    title: video ? `${video.title} - Video Player` : "Video Not Found",
+    title: `${video.title} - Video Player`,
     meta: [
       {
         name: "description",
-        content: video
-          ? `Watch ${video.title} - ${video.resolution} video with HLS streaming`
-          : "Video not found",
+        content: `Watch ${video.title} - ${video.resolution} video with HLS streaming`,
       },
       {
         name: "keywords",
-        content: "video, streaming, HLS, video player",
+        content: `video, streaming, HLS, video player, ${video.title}`,
+      },
+      // Open Graph meta tags for social sharing
+      {
+        property: "og:title",
+        content: video.title,
+      },
+      {
+        property: "og:description",
+        content: `Watch ${video.title} in ${video.resolution}`,
+      },
+      {
+        property: "og:type",
+        content: "video.other",
+      },
+      {
+        property: "og:url",
+        content: url.href,
+      },
+      {
+        property: "og:video",
+        content: video.hlsPath,
+      },
+      ...(video.thumbnail
+        ? [
+            {
+              property: "og:image",
+              content: video.thumbnail,
+            },
+          ]
+        : []),
+      // Twitter Card meta tags
+      {
+        name: "twitter:card",
+        content: "player",
+      },
+      {
+        name: "twitter:title",
+        content: video.title,
+      },
+      {
+        name: "twitter:description",
+        content: `Watch ${video.title} in ${video.resolution}`,
+      },
+    ],
+    links: [
+      {
+        rel: "canonical",
+        href: url.href,
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        props: {
+          dangerouslySetInnerHTML: JSON.stringify(structuredData),
+        },
       },
     ],
   };

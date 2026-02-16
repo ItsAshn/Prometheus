@@ -8,6 +8,7 @@ import {
   constants,
 } from "fs";
 import { join } from "path";
+import { atomicWriteJSON, safeReadJSON } from "./atomic-file-ops";
 
 const CONFIG_FILE_PATH = join(process.cwd(), "temp", "site-config.json");
 
@@ -87,12 +88,9 @@ export const applyCustomCSS = server$(async function (cssContent: string) {
       };
     }
     
-    // Save updated config
+    // Save updated config using atomic write
     try {
-      writeFileSync(CONFIG_FILE_PATH, JSON.stringify(config, null, 2), {
-        encoding: "utf-8",
-        mode: 0o644,
-      });
+      await atomicWriteJSON(CONFIG_FILE_PATH, config);
       console.log("[Theme Utils] Config saved successfully");
     } catch (writeError) {
       console.error("[Theme Utils] Failed to write config:", writeError);

@@ -2,6 +2,11 @@ import type { RequestHandler } from "@builder.io/qwik-city";
 import { promises as fs } from "fs";
 import path from "path";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
+import {
+  rateLimiters,
+  getClientIP,
+  createRateLimitHeaders,
+} from "~/lib/rate-limiter";
 
 export const onOptions: RequestHandler = async ({ send, request }) => {
   // Handle CORS preflight requests
@@ -16,12 +21,45 @@ export const onOptions: RequestHandler = async ({ send, request }) => {
         "Access-Control-Allow-Credentials": "true",
         "Access-Control-Max-Age": "86400",
       },
-    })
+    }),
   );
 };
 
-export const onPost: RequestHandler = async ({ request, cookie, send }) => {
+export const onPost: RequestHandler = async ({
+  request,
+  cookie,
+  send,
+  headers,
+}) => {
   try {
+    // Apply rate limiting for chunk uploads
+    const clientIP = getClientIP(headers);
+    const rateLimitHeaders = createRateLimitHeaders(
+      rateLimiters.uploadChunk,
+      clientIP,
+    );
+
+    if (!rateLimiters.uploadChunk.check(clientIP)) {
+      const errorData = {
+        success: false,
+        message: "Upload rate limit exceeded. Please try again shortly.",
+      };
+      const errorBody = JSON.stringify(errorData);
+      const origin = request.headers.get("origin") || "*";
+      send(
+        new Response(errorBody, {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            ...rateLimitHeaders,
+          },
+        }),
+      );
+      return;
+    }
+
     // Debug request information
     console.log("Upload chunk request:", {
       method: request.method,
@@ -51,7 +89,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
           },
-        })
+        }),
       );
       return;
     }
@@ -75,7 +113,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
           },
-        })
+        }),
       );
       return;
     }
@@ -110,7 +148,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Credentials": "true",
           },
-        })
+        }),
       );
       return;
     }
@@ -128,7 +166,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
     // Save the chunk
     const chunkPath = path.join(
       tempDir,
-      `chunk_${chunkIndex.toString().padStart(4, "0")}`
+      `chunk_${chunkIndex.toString().padStart(4, "0")}`,
     );
 
     try {
@@ -138,7 +176,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
     } catch (error) {
       console.error(
         `Failed to save chunk ${chunkIndex + 1}/${totalChunks}:`,
-        error
+        error,
       );
       throw new Error(`Failed to save chunk: ${error}`);
     }
@@ -148,7 +186,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
     for (let i = 0; i < totalChunks; i++) {
       const chunkFile = path.join(
         tempDir,
-        `chunk_${i.toString().padStart(4, "0")}`
+        `chunk_${i.toString().padStart(4, "0")}`,
       );
       try {
         await fs.access(chunkFile);
@@ -181,7 +219,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           "Access-Control-Allow-Headers": "Content-Type, Cookie",
           "Access-Control-Allow-Credentials": "true",
         },
-      })
+      }),
     );
   } catch (error) {
     console.error("Chunk upload error:", {
@@ -217,7 +255,7 @@ export const onPost: RequestHandler = async ({ request, cookie, send }) => {
           "Access-Control-Allow-Headers": "Content-Type, Cookie",
           "Access-Control-Allow-Credentials": "true",
         },
-      })
+      }),
     );
   }
 };

@@ -4,17 +4,55 @@ import path from "path";
 import { VideoProcessor } from "~/lib/video/video-processor";
 import { AdminAuthService, ADMIN_COOKIE_NAME } from "~/lib/auth";
 import { CONFIG } from "~/lib/constants";
+import {
+  rateLimiters,
+  getClientIP,
+  createRateLimitHeaders,
+} from "~/lib/rate-limiter";
+import {
+  ErrorMessages,
+  formatSystemError,
+  logError,
+  createErrorResponse,
+} from "~/lib/errors";
+import {
+  getDiskSpace,
+  hasEnoughDiskSpace,
+  formatBytes,
+} from "~/lib/disk-space";
 
-export const onPost: RequestHandler = async ({ request, json, cookie }) => {
+export const onPost: RequestHandler = async ({
+  request,
+  json,
+  cookie,
+  headers,
+}) => {
   try {
+    // Apply rate limiting for uploads
+    const clientIP = getClientIP(headers);
+    const rateLimitHeaders = createRateLimitHeaders(
+      rateLimiters.upload,
+      clientIP,
+    );
+
+    if (!rateLimiters.upload.check(clientIP)) {
+      // Set rate limit headers
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        headers.set(key, value);
+      });
+
+      json(429, {
+        success: false,
+        message: "Upload limit reached. Please try again in an hour.",
+      });
+      return;
+    }
+
     // Get admin token from cookie
     const adminToken = cookie.get(ADMIN_COOKIE_NAME);
 
     if (!adminToken) {
-      json(401, {
-        success: false,
-        message: "Admin authentication required",
-      });
+      json(401, createErrorResponse(ErrorMessages.AUTH.REQUIRED));
       return;
     }
 
@@ -22,10 +60,7 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     const tokenPayload = AdminAuthService.verifyToken(adminToken.value);
 
     if (!tokenPayload) {
-      json(401, {
-        success: false,
-        message: "Invalid or expired token",
-      });
+      json(401, createErrorResponse(ErrorMessages.AUTH.TOKEN_EXPIRED));
       return;
     }
 
@@ -38,12 +73,44 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
 
       // Check if size exceeds our limit before parsing
       if (sizeInBytes > CONFIG.VIDEO.MAX_SIZE_BYTES) {
-        json(413, {
-          // 413 Payload Too Large
-          success: false,
-          message: `File size (${sizeInGB.toFixed(2)} GB) exceeds ${CONFIG.VIDEO.MAX_SIZE_GB}GB limit. Please compress or split the video.`,
-        });
+        json(
+          413,
+          createErrorResponse(
+            ErrorMessages.UPLOAD.FILE_TOO_LARGE(
+              sizeInGB,
+              CONFIG.VIDEO.MAX_SIZE_GB,
+            ),
+            "Try compressing the video using a tool like HandBrake, or split it into smaller parts.",
+          ),
+        );
         return;
+      }
+
+      // Check disk space before accepting upload
+      // Require 3x the file size to account for processing (original + HLS segments + safety buffer)
+      const requiredSpace = sizeInBytes * 3;
+      const uploadDir = path.join(process.cwd(), CONFIG.PATHS.TEMP_DIR);
+
+      try {
+        const hasSpace = await hasEnoughDiskSpace(uploadDir, requiredSpace, 10);
+
+        if (!hasSpace) {
+          const diskInfo = await getDiskSpace(uploadDir);
+          const availableGB = diskInfo.available / (1024 * 1024 * 1024);
+
+          json(
+            507,
+            createErrorResponse(
+              ErrorMessages.UPLOAD.DISK_FULL(availableGB),
+              `This upload requires approximately ${formatBytes(requiredSpace)} of space (including processing overhead). Please free up disk space and try again.`,
+            ),
+          );
+          return;
+        }
+      } catch (diskError) {
+        logError("Disk Space Check", diskError);
+        // Continue with upload if disk check fails (conservative approach)
+        console.warn("Could not check disk space, proceeding with upload");
       }
     }
 
@@ -52,22 +119,27 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     try {
       formData = await request.formData();
     } catch (error) {
-      console.error("FormData parsing error:", error);
+      logError("Upload FormData Parse", error);
 
       // Check if this is a size-related error
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (errorMessage.includes("body") || errorMessage.includes("size")) {
-        json(413, {
-          success: false,
-          message:
-            "File too large to process. Please try a smaller file or use chunked upload.",
-        });
+        json(
+          413,
+          createErrorResponse(
+            ErrorMessages.UPLOAD.PARSE_FAILED,
+            "The file is too large to upload directly. Try using the chunked upload feature or compress the video first.",
+          ),
+        );
       } else {
-        json(400, {
-          success: false,
-          message: "Failed to parse form data. Please check the file format.",
-        });
+        json(
+          400,
+          createErrorResponse(
+            ErrorMessages.UPLOAD.PARSE_FAILED,
+            "Ensure the file is a valid video and your connection is stable.",
+          ),
+        );
       }
       return;
     }
@@ -75,20 +147,25 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     const videoFile = formData.get("video") as File;
     const title = formData.get("title") as string;
 
-    if (!videoFile || !title) {
-      json(400, {
-        success: false,
-        message: "Video file and title are required",
-      });
+    if (!videoFile) {
+      json(400, createErrorResponse(ErrorMessages.UPLOAD.FILE_REQUIRED));
+      return;
+    }
+
+    if (!title || title.trim().length === 0) {
+      json(400, createErrorResponse(ErrorMessages.UPLOAD.TITLE_REQUIRED));
       return;
     }
 
     // Validate file size
     if (videoFile.size > CONFIG.VIDEO.MAX_SIZE_BYTES) {
-      json(400, {
-        success: false,
-        message: `File size exceeds ${CONFIG.VIDEO.MAX_SIZE_GB}GB limit`,
-      });
+      const sizeGB = videoFile.size / (1024 * 1024 * 1024);
+      json(
+        413,
+        createErrorResponse(
+          ErrorMessages.UPLOAD.FILE_TOO_LARGE(sizeGB, CONFIG.VIDEO.MAX_SIZE_GB),
+        ),
+      );
       return;
     }
 
@@ -111,19 +188,24 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
     const allowedExtensions = CONFIG.VIDEO.ALLOWED_EXTENSIONS;
 
     const isValidMimeType = allowedTypes.includes(
-      (videoFile.type as any) || ""
+      (videoFile.type as any) || "",
     );
     const isValidExtension = allowedExtensions.includes(
-      (fileExtension as any) || ""
+      (fileExtension as any) || "",
     );
 
     if (!isValidMimeType && !isValidExtension) {
       // Clean up uploaded file
-      await fs.unlink(tempFilePath);
-      json(400, {
-        success: false,
-        message: "Invalid file type. Only video files are allowed.",
-      });
+      await fs.unlink(tempFilePath).catch(() => {});
+      json(
+        400,
+        createErrorResponse(
+          ErrorMessages.UPLOAD.INVALID_FORMAT(
+            Array.from(CONFIG.VIDEO.ALLOWED_EXTENSIONS),
+          ),
+          `Detected file type: ${fileExtension || videoFile.type || "unknown"}`,
+        ),
+      );
       return;
     }
 
@@ -136,22 +218,26 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
         // Note: VideoProcessor handles cleanup of the input file
       })
       .catch((error) => {
-        console.error(`Video processing failed for: ${title}`, error);
+        logError("Video Processing", error, { videoId, title });
         // Clean up temp file only on error
         fs.unlink(tempFilePath).catch(() => {});
       });
 
     json(200, {
       success: true,
-      message: "Video upload started. Processing in background.",
+      message: "Video uploaded successfully! Processing will begin shortly.",
       videoId,
       title,
     });
   } catch (error) {
-    console.error("Video upload error:", error);
-    json(500, {
-      success: false,
-      message: "Internal server error during video upload",
-    });
+    logError("Video Upload", error);
+    const userMessage = formatSystemError(error);
+    json(
+      500,
+      createErrorResponse(
+        userMessage,
+        "If this problem persists, contact the administrator.",
+      ),
+    );
   }
 };

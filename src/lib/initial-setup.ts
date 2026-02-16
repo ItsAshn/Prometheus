@@ -2,6 +2,7 @@ import { writeFile, readFile, access } from "fs/promises";
 import { join } from "path";
 import bcrypt from "bcryptjs";
 import { CONFIG } from "./constants";
+import { atomicWriteJSON, safeReadJSON } from "./atomic-file-ops";
 
 const CREDENTIALS_FILE = join(process.cwd(), "temp", "admin-credentials.json");
 
@@ -94,8 +95,8 @@ export async function saveInitialCredentials(
     setupDate: new Date().toISOString(),
   };
 
-  // Save to file
-  await writeFile(CREDENTIALS_FILE, JSON.stringify(credentials, null, 2), "utf-8");
+  // Save to file using atomic write
+  await atomicWriteJSON(CREDENTIALS_FILE, credentials);
 }
 
 /**

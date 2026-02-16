@@ -6,9 +6,18 @@ import {
   $,
   useStylesScoped$,
 } from "@builder.io/qwik";
-import { LuAlertTriangle, LuClapperboard, LuPlay } from "@qwikest/icons/lucide";
+import {
+  LuAlertTriangle,
+  LuClapperboard,
+  LuPlay,
+  LuPencil,
+} from "@qwikest/icons/lucide";
 import { loadVideosServer } from "~/lib/data-loaders";
 import { VideoPlayer } from "./video-player";
+import { showToast } from "~/components/ui/toast";
+import { ConfirmDialog } from "~/components/ui/confirm-dialog";
+import { VideoListSkeleton } from "~/components/ui/skeleton";
+import { VideoEditDialog } from "./video-edit-dialog";
 import type { VideoMetadata } from "~/lib/video/video-processor";
 import styles from "./videoList.css?inline";
 
@@ -36,6 +45,11 @@ export default component$<VideoListProps>((props) => {
   const error = useSignal("");
   const selectedVideo = useSignal<VideoMetadata | null>(null);
   const currentPage = useSignal(1);
+  const deleteConfirmOpen = useSignal(false);
+  const videoToDelete = useSignal<string | null>(null);
+  const isDeleting = useSignal(false);
+  const editDialogOpen = useSignal(false);
+  const videoToEdit = useSignal<VideoMetadata | null>(null);
 
   // Extract props with defaults - keep as reactive by accessing props directly in functions
   const {
@@ -75,7 +89,7 @@ export default component$<VideoListProps>((props) => {
       if (currentSearchQuery && currentSearchQuery.trim()) {
         const query = currentSearchQuery.toLowerCase().trim();
         videoList = videoList.filter((video: VideoMetadata) =>
-          video.title.toLowerCase().includes(query)
+          video.title.toLowerCase().includes(query),
         );
       }
 
@@ -85,23 +99,23 @@ export default component$<VideoListProps>((props) => {
         case "newest":
           videoList.sort(
             (a: VideoMetadata, b: VideoMetadata) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
           break;
         case "oldest":
           videoList.sort(
             (a: VideoMetadata, b: VideoMetadata) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
           );
           break;
         case "title":
           videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
-            a.title.localeCompare(b.title)
+            a.title.localeCompare(b.title),
           );
           break;
         case "duration":
           videoList.sort(
-            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
+            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration,
           );
           break;
       }
@@ -147,7 +161,7 @@ export default component$<VideoListProps>((props) => {
       if (currentSearch && currentSearch.trim()) {
         const query = currentSearch.toLowerCase().trim();
         videoList = videoList.filter((video: VideoMetadata) =>
-          video.title.toLowerCase().includes(query)
+          video.title.toLowerCase().includes(query),
         );
       }
 
@@ -157,23 +171,23 @@ export default component$<VideoListProps>((props) => {
         case "newest":
           videoList.sort(
             (a: VideoMetadata, b: VideoMetadata) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
           );
           break;
         case "oldest":
           videoList.sort(
             (a: VideoMetadata, b: VideoMetadata) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
           );
           break;
         case "title":
           videoList.sort((a: VideoMetadata, b: VideoMetadata) =>
-            a.title.localeCompare(b.title)
+            a.title.localeCompare(b.title),
           );
           break;
         case "duration":
           videoList.sort(
-            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration
+            (a: VideoMetadata, b: VideoMetadata) => b.duration - a.duration,
           );
           break;
       }
@@ -202,15 +216,23 @@ export default component$<VideoListProps>((props) => {
 
   const deleteVideo = $(async (videoId: string) => {
     if (!isAdmin) return;
+
+    // Open confirmation dialog
+    videoToDelete.value = videoId;
+    deleteConfirmOpen.value = true;
+  });
+
+  const confirmDelete = $(async () => {
+    if (!videoToDelete.value) return;
     if (typeof window === "undefined") return;
 
-    if (!confirm("Are you sure you want to delete this video?")) return;
+    isDeleting.value = true;
 
     try {
       const response = await fetch("/api/video/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId }),
+        body: JSON.stringify({ videoId: videoToDelete.value }),
         credentials: "include", // Include cookies for authentication
       });
 
@@ -223,21 +245,86 @@ export default component$<VideoListProps>((props) => {
       const result = await response.json();
 
       if (result.success) {
+        showToast("success", "Video deleted successfully");
+
         // Refresh video list (force refresh to get updated data)
         await loadVideos(true);
 
         // Close video player if deleted video was selected
-        if (selectedVideo.value?.id === videoId) {
+        if (selectedVideo.value?.id === videoToDelete.value) {
           selectedVideo.value = null;
         }
       } else {
-        alert(result.message || "Failed to delete video");
+        showToast(
+          "error",
+          "Failed to delete video",
+          result.message || "Unknown error",
+        );
       }
     } catch (error) {
       console.error("Error deleting video:", error);
-      alert(
-        `Failed to delete video: ${error instanceof Error ? error.message : "Unknown error"}`
+      showToast(
+        "error",
+        "Failed to delete video",
+        error instanceof Error ? error.message : "Unknown error",
       );
+    } finally {
+      isDeleting.value = false;
+      deleteConfirmOpen.value = false;
+      videoToDelete.value = null;
+    }
+  });
+
+  const openEditDialog = $((video: VideoMetadata) => {
+    videoToEdit.value = video;
+    editDialogOpen.value = true;
+  });
+
+  const handleSaveEdit = $(async (title: string, description: string) => {
+    if (!videoToEdit.value) return;
+
+    try {
+      const response = await fetch(
+        `/api/video/update/${videoToEdit.value.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, description }),
+        },
+      );
+
+      if (response.ok) {
+        // Update local video data
+        const updatedVideos = cachedVideos.value.map((v) =>
+          v.id === videoToEdit.value?.id
+            ? { ...v, title, description, updatedAt: Date.now() }
+            : v,
+        );
+        cachedVideos.value = updatedVideos;
+
+        // Refresh display
+        await loadVideos(false);
+
+        // Update selected video if it's the one being edited
+        if (selectedVideo.value?.id === videoToEdit.value.id) {
+          selectedVideo.value = { ...selectedVideo.value, title, description };
+        }
+
+        showToast(
+          "success",
+          "Video updated",
+          "Video metadata successfully updated",
+        );
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update video");
+      }
+    } catch (error) {
+      console.error("Failed to update video:", error);
+      throw error; // Re-throw to let dialog handle it
+    } finally {
+      editDialogOpen.value = false;
+      videoToEdit.value = null;
     }
   });
 
@@ -290,9 +377,8 @@ export default component$<VideoListProps>((props) => {
 
   if (isLoading.value) {
     return (
-      <div class="video-list-loading">
-        <div class="loading-spinner"></div>
-        <p>Loading videos...</p>
+      <div class="video-list-container">
+        <VideoListSkeleton count={count || itemsPerPage} />
       </div>
     );
   }
@@ -418,16 +504,25 @@ export default component$<VideoListProps>((props) => {
                     class="btn btn-primary btn-sm flex-1"
                     aria-label={`${enablePlayer ? "Play" : "View"} ${video.title}`}
                   >
-                    {enablePlayer ? "Play" : "View"}
+                    <LuPlay /> {enablePlayer ? "Play" : "View"}
                   </button>
                   {isAdmin && (
-                    <button
-                      onClick$={() => deleteVideo(video.id)}
-                      class="btn btn-destructive btn-sm"
-                      aria-label={`Delete ${video.title}`}
-                    >
-                      Delete
-                    </button>
+                    <>
+                      <button
+                        onClick$={() => openEditDialog(video)}
+                        class="btn btn-secondary btn-sm"
+                        aria-label={`Edit ${video.title}`}
+                      >
+                        <LuPencil /> Edit
+                      </button>
+                      <button
+                        onClick$={() => deleteVideo(video.id)}
+                        class="btn btn-destructive btn-sm"
+                        aria-label={`Delete ${video.title}`}
+                      >
+                        Delete
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -450,6 +545,37 @@ export default component$<VideoListProps>((props) => {
             </p>
           </div>
         )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen.value}
+        onClose$={() => {
+          deleteConfirmOpen.value = false;
+          videoToDelete.value = null;
+        }}
+        onConfirm$={confirmDelete}
+        title="Delete Video"
+        message="Are you sure you want to delete this video? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting.value}
+      />
+
+      {/* Video Edit Dialog */}
+      {videoToEdit.value && (
+        <VideoEditDialog
+          isOpen={editDialogOpen.value}
+          onClose$={() => {
+            editDialogOpen.value = false;
+            videoToEdit.value = null;
+          }}
+          videoId={videoToEdit.value.id}
+          initialTitle={videoToEdit.value.title}
+          initialDescription={videoToEdit.value.description || ""}
+          onSave$={handleSaveEdit}
+        />
+      )}
     </div>
   );
 });

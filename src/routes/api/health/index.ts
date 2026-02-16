@@ -3,10 +3,12 @@ import { VideoProcessor } from "~/lib/video/video-processor";
 import { promises as fs } from "fs";
 import path from "path";
 import { CONFIG } from "~/lib/constants";
+import { getDiskSpace, formatBytes } from "~/lib/disk-space";
+import os from "os";
 
 /**
  * Health check endpoint
- * Returns system status including FFmpeg availability, disk space, processing queue, and Docker info
+ * Returns comprehensive system status for monitoring and debugging
  */
 export const onGet: RequestHandler = async ({ json }) => {
   try {
@@ -15,14 +17,51 @@ export const onGet: RequestHandler = async ({ json }) => {
         available: false,
         version: null as string | null,
         path: null as string | null,
+        error: null as string | null,
       },
-      disk: { available: true, free: 0, total: 0, used: 0, percentUsed: 0 },
-      processing: { active: 0, queued: 0 },
-      directories: { videosDir: false, hlsDir: false, tempDir: false },
+      disk: {
+        available: false,
+        free: "0 B",
+        total: "0 B",
+        used: "0 B",
+        percentUsed: 0,
+        healthy: true,
+      },
+      processing: {
+        active: 0,
+        completed: 0,
+        failed: 0,
+        queued: 0,
+      },
+      directories: {
+        videosDir: false,
+        hlsDir: false,
+        tempDir: false,
+        uploadsDir: false,
+      },
       docker: {
         isContainer: false,
         hostname: null as string | null,
         version: null as string | null,
+        imageName: null as string | null,
+      },
+      system: {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        uptime: Math.floor(process.uptime()),
+        memory: {
+          total: formatBytes(os.totalmem()),
+          free: formatBytes(os.freemem()),
+          used: formatBytes(os.totalmem() - os.freemem()),
+          percentUsed: Math.round(
+            ((os.totalmem() - os.freemem()) / os.totalmem()) * 100,
+          ),
+        },
+        cpu: {
+          cores: os.cpus().length,
+          model: os.cpus()[0]?.model || "Unknown",
+        },
       },
     };
 
@@ -33,9 +72,11 @@ export const onGet: RequestHandler = async ({ json }) => {
         available: ffmpegStatus.available,
         version: ffmpegStatus.version,
         path: ffmpegStatus.path,
+        error: ffmpegStatus.error || null,
       };
     } catch (error) {
-      console.error("FFmpeg check failed:", error);
+      checks.ffmpeg.error =
+        error instanceof Error ? error.message : "FFmpeg check failed";
     }
 
     // Check processing queue
@@ -44,6 +85,9 @@ export const onGet: RequestHandler = async ({ json }) => {
       checks.processing = {
         active: processingStatus.filter((s) => s.status === "processing")
           .length,
+        completed: processingStatus.filter((s) => s.status === "completed")
+          .length,
+        failed: processingStatus.filter((s) => s.status === "failed").length,
         queued: processingStatus.length,
       };
     } catch (error) {
@@ -55,10 +99,12 @@ export const onGet: RequestHandler = async ({ json }) => {
       const videosDir = path.join(process.cwd(), CONFIG.PATHS.VIDEOS_DIR);
       const hlsDir = path.join(process.cwd(), CONFIG.PATHS.HLS_DIR);
       const tempDir = path.join(process.cwd(), CONFIG.PATHS.TEMP_DIR);
+      const uploadsDir = path.join(tempDir, "uploads");
 
       checks.directories.videosDir = await checkDirectoryWritable(videosDir);
       checks.directories.hlsDir = await checkDirectoryWritable(hlsDir);
       checks.directories.tempDir = await checkDirectoryWritable(tempDir);
+      checks.directories.uploadsDir = await checkDirectoryWritable(uploadsDir);
     } catch (error) {
       console.error("Directory check failed:", error);
     }
@@ -66,42 +112,64 @@ export const onGet: RequestHandler = async ({ json }) => {
     // Check disk space
     try {
       const diskSpace = await getDiskSpace(process.cwd());
-      checks.disk = diskSpace;
+      checks.disk = {
+        available: true,
+        free: formatBytes(diskSpace.available),
+        total: formatBytes(diskSpace.total),
+        used: formatBytes(diskSpace.used),
+        percentUsed: Math.round(diskSpace.percentUsed),
+        healthy: diskSpace.percentUsed < 90, // Warn if >90% full
+      };
     } catch (error) {
       console.error("Disk space check failed:", error);
-      checks.disk.available = false;
     }
 
     // Check Docker environment
     try {
+      const isContainer =
+        process.env.DOCKER_CONTAINER === "true" ||
+        (await fs
+          .access("/.dockerenv")
+          .then(() => true)
+          .catch(() => false));
+
       checks.docker = {
-        isContainer:
-          process.env.DOCKER_CONTAINER === "true" || !!process.env.HOSTNAME,
+        isContainer,
         hostname: process.env.HOSTNAME || null,
         version: process.env.APP_VERSION || null,
+        imageName: process.env.IMAGE_NAME || null,
       };
     } catch (error) {
       console.error("Docker check failed:", error);
     }
 
     // Determine overall health status
-    const healthy =
-      checks.ffmpeg.available &&
-      checks.directories.videosDir &&
-      checks.directories.hlsDir &&
-      checks.directories.tempDir &&
-      checks.disk.percentUsed < 95; // Alert if disk is >95% full
+    const issues: string[] = [];
 
-    const status = healthy ? "healthy" : "degraded";
-    const statusCode = healthy ? 200 : 503;
+    if (!checks.ffmpeg.available) issues.push("FFmpeg not available");
+    if (!checks.directories.videosDir)
+      issues.push("Videos directory not writable");
+    if (!checks.directories.hlsDir) issues.push("HLS directory not writable");
+    if (!checks.directories.tempDir) issues.push("Temp directory not writable");
+    if (!checks.disk.healthy)
+      issues.push(`Disk usage critical: ${checks.disk.percentUsed}%`);
+    if (checks.system.memory.percentUsed > 90)
+      issues.push(`Memory usage high: ${checks.system.memory.percentUsed}%`);
+
+    const healthy = issues.length === 0;
+    const status = healthy
+      ? "healthy"
+      : issues.length > 2
+        ? "unhealthy"
+        : "degraded";
+    const statusCode = healthy ? 200 : issues.length > 2 ? 503 : 200;
 
     json(statusCode, {
       status,
       timestamp: new Date().toISOString(),
       version: process.env.APP_VERSION || "1.0.0",
-      uptime: process.uptime(),
-      nodejs: process.version,
-      platform: process.platform,
+      uptime: `${Math.floor(process.uptime() / 3600)}h ${Math.floor((process.uptime() % 3600) / 60)}m`,
+      issues: issues.length > 0 ? issues : undefined,
       checks,
     });
     return;
@@ -132,45 +200,5 @@ async function checkDirectoryWritable(dirPath: string): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-/**
- * Get disk space information
- * Note: This is a basic implementation. For production, consider using a library like 'check-disk-space'
- */
-async function getDiskSpace(dirPath: string): Promise<{
-  available: boolean;
-  free: number;
-  total: number;
-  used: number;
-  percentUsed: number;
-}> {
-  try {
-    // This is platform-dependent and basic
-    // For a more robust solution, you'd want to use a library
-    const stats = await fs.statfs(dirPath);
-
-    const total = stats.blocks * stats.bsize;
-    const free = stats.bfree * stats.bsize;
-    const used = total - free;
-    const percentUsed = Math.round((used / total) * 100);
-
-    return {
-      available: true,
-      free,
-      total,
-      used,
-      percentUsed,
-    };
-  } catch {
-    // Fallback if statfs is not available
-    return {
-      available: false,
-      free: 0,
-      total: 0,
-      used: 0,
-      percentUsed: 0,
-    };
   }
 }

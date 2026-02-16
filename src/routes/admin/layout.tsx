@@ -1,4 +1,10 @@
-import { component$, Slot, useStylesScoped$ } from "@builder.io/qwik";
+import {
+  component$,
+  Slot,
+  useStylesScoped$,
+  useSignal,
+  $,
+} from "@builder.io/qwik";
 import { useLocation } from "@builder.io/qwik-city";
 import {
   LuSlidersHorizontal,
@@ -8,6 +14,8 @@ import {
   LuSettings,
   LuRefreshCw,
   LuHome,
+  LuMenu,
+  LuX,
 } from "@qwikest/icons/lucide";
 import { useAuthLoader } from "../layout";
 
@@ -15,6 +23,7 @@ export const Layout = component$(() => {
   useStylesScoped$(styles);
   const auth = useAuthLoader();
   const location = useLocation();
+  const isSidebarOpen = useSignal(false);
 
   // Check if current route is active
   const isActive = (path: string) => {
@@ -23,6 +32,14 @@ export const Layout = component$(() => {
     }
     return location.url.pathname.startsWith(path) && path !== "/admin";
   };
+
+  const closeSidebar$ = $(() => {
+    isSidebarOpen.value = false;
+  });
+
+  const toggleSidebar$ = $(() => {
+    isSidebarOpen.value = !isSidebarOpen.value;
+  });
 
   // If not authenticated, show the login page without sidebar
   if (!auth.value.isAuthenticated) {
@@ -35,8 +52,32 @@ export const Layout = component$(() => {
 
   return (
     <div class="admin-layout">
+      {/* Mobile Header */}
+      <header class="mobile-header">
+        <button
+          class="mobile-menu-btn"
+          onClick$={toggleSidebar$}
+          aria-label="Toggle menu"
+          aria-expanded={isSidebarOpen.value}
+        >
+          {isSidebarOpen.value ? <LuX /> : <LuMenu />}
+        </button>
+        <div class="mobile-brand">
+          <LuSlidersHorizontal />
+          <span>Admin Panel</span>
+        </div>
+        <div class="mobile-user">
+          <LuUser />
+        </div>
+      </header>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen.value && (
+        <div class="sidebar-overlay" onClick$={closeSidebar$}></div>
+      )}
+
       {/* Sidebar Navigation */}
-      <aside class="admin-sidebar">
+      <aside class={`admin-sidebar ${isSidebarOpen.value ? "open" : ""}`}>
         <div class="sidebar-header">
           <div class="sidebar-brand">
             <span class="brand-icon">
@@ -59,6 +100,7 @@ export const Layout = component$(() => {
           <a
             href="/admin"
             class={`nav-item ${isActive("/admin") ? "active" : ""}`}
+            onClick$={closeSidebar$}
           >
             <span class="nav-icon">
               <LuLayoutDashboard />
@@ -68,6 +110,7 @@ export const Layout = component$(() => {
           <a
             href="/admin/videos"
             class={`nav-item ${isActive("/admin/videos") ? "active" : ""}`}
+            onClick$={closeSidebar$}
           >
             <span class="nav-icon">
               <LuClapperboard />
@@ -77,6 +120,7 @@ export const Layout = component$(() => {
           <a
             href="/admin/config"
             class={`nav-item ${isActive("/admin/config") ? "active" : ""}`}
+            onClick$={closeSidebar$}
           >
             <span class="nav-icon">
               <LuSettings />
@@ -86,6 +130,7 @@ export const Layout = component$(() => {
           <a
             href="/admin/system-update"
             class={`nav-item ${isActive("/admin/system-update") ? "active" : ""}`}
+            onClick$={closeSidebar$}
           >
             <span class="nav-icon">
               <LuRefreshCw />
@@ -95,7 +140,7 @@ export const Layout = component$(() => {
         </nav>
 
         <div class="sidebar-footer">
-          <a href="/" class="nav-item">
+          <a href="/" class="nav-item" onClick$={closeSidebar$}>
             <span class="nav-icon">
               <LuHome />
             </span>
@@ -118,6 +163,12 @@ const styles = `
   display: flex;
   min-height: 100vh;
   background: var(--color-background);
+  position: relative;
+}
+
+/* Mobile Header - Hidden on desktop */
+.mobile-header {
+  display: none;
 }
 
 /* Admin Login Container (for non-authenticated users) */
@@ -139,6 +190,12 @@ const styles = `
   height: 100vh;
   overflow-y: auto;
   box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease;
+}
+
+/* Sidebar Overlay - Hidden on desktop */
+.sidebar-overlay {
+  display: none;
 }
 
 .sidebar-header {
@@ -285,16 +342,109 @@ const styles = `
 }
 
 @media (max-width: 768px) {
-  .admin-layout {
-    flex-direction: column;
+  /* Show mobile header */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-4);
+    z-index: 1000;
+    box-shadow: var(--shadow-sm);
   }
 
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    color: var(--color-foreground);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-menu-btn:hover {
+    background: var(--color-muted);
+  }
+
+  .mobile-menu-btn:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-foreground);
+  }
+
+  .mobile-user {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--color-primary);
+    border-radius: var(--radius-full);
+    color: var(--color-primary-foreground);
+    font-size: 1.25rem;
+  }
+
+  /* Sidebar as drawer on mobile */
   .admin-sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    height: 100vh;
+    transform: translateX(-100%);
+    z-index: 1001;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  /* Sidebar overlay when open on mobile */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .admin-layout {
+    flex-direction: column;
+    padding-top: 60px;
   }
 
   .sidebar-header {
@@ -310,18 +460,12 @@ const styles = `
   }
 
   .sidebar-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    padding: var(--spacing-3);
-    gap: var(--spacing-3);
+    padding: var(--spacing-4);
   }
 
   .nav-item {
-    flex-direction: column;
-    gap: var(--spacing-1);
-    padding: var(--spacing-2);
-    min-width: 80px;
-    text-align: center;
+    padding: var(--spacing-3) var(--spacing-4);
+    min-height: 48px;
   }
 
   .nav-icon {
@@ -329,11 +473,11 @@ const styles = `
   }
 
   .nav-label {
-    font-size: var(--font-size-xs);
+    font-size: var(--font-size-base);
   }
 
   .sidebar-footer {
-    padding: var(--spacing-3);
+    padding: var(--spacing-4);
   }
 
   .admin-main {
@@ -342,6 +486,20 @@ const styles = `
 }
 
 @media (max-width: 480px) {
+  .mobile-header {
+    height: 56px;
+    padding: var(--spacing-3);
+  }
+
+  .mobile-brand {
+    font-size: var(--font-size-base);
+  }
+
+  .admin-sidebar {
+    width: 85%;
+    max-width: 300px;
+  }
+
   .admin-main {
     padding: var(--spacing-3);
   }
@@ -351,7 +509,24 @@ const styles = `
   }
 
   .nav-item {
-    min-width: 70px;
+    min-height: 44px;
+  }
+}
+
+/* Touch target improvements for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .nav-item {
+    min-height: 48px;
+    padding: var(--spacing-4);
+  }
+
+  .mobile-menu-btn {
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .nav-icon {
+    font-size: 1.5rem;
   }
 }
 `;

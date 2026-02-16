@@ -13,11 +13,13 @@ import {
   LuRocket,
 } from "@qwikest/icons/lucide";
 import { checkAdminAuthServer } from "~/lib/admin-auth-utils";
+import { showToast } from "~/components/ui/toast";
 import styles from "./video-upload.css?inline";
 
 export const VideoUpload = component$(() => {
   useStylesScoped$(styles);
   const title = useSignal("");
+  const description = useSignal("");
   const selectedFile = useSignal<File | null>(null);
   const selectedThumbnail = useSignal<File | null>(null);
   const thumbnailPreview = useSignal<string>("");
@@ -25,6 +27,7 @@ export const VideoUpload = component$(() => {
   const uploadProgress = useSignal(0);
   const message = useSignal("");
   const messageType = useSignal<"success" | "error" | "info">("info");
+  const isDragging = useSignal(false);
 
   const handleFileSelect = $((event: Event) => {
     const target = event.target as HTMLInputElement;
@@ -121,6 +124,77 @@ export const VideoUpload = component$(() => {
     }
   });
 
+  // Drag and drop handlers
+  const handleDragEnter$ = $((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging.value = true;
+  });
+
+  const handleDragLeave$ = $((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging.value = false;
+  });
+
+  const handleDragOver$ = $((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  const handleDrop$ = $((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDragging.value = false;
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedMimeTypes = [
+      "video/mp4",
+      "video/avi",
+      "video/x-msvideo",
+      "video/quicktime",
+      "video/mov",
+      "video/x-matroska",
+      "video/mkv",
+      "video/webm",
+    ];
+
+    const fileExtension = file.name.toLowerCase().split(".").pop();
+    const allowedExtensions = ["mp4", "avi", "mov", "mkv", "webm"];
+
+    const isValidMimeType = allowedMimeTypes.includes(file.type);
+    const isValidExtension = allowedExtensions.includes(fileExtension || "");
+
+    if (!isValidMimeType && !isValidExtension) {
+      showToast(
+        "error",
+        "Invalid file type",
+        `Please drop a valid video file. Supported: MP4, AVI, MOV, MKV, WebM`,
+      );
+      return;
+    }
+
+    // Validate file size
+    const maxSize = 5 * 1024 * 1024 * 1024; // 5GB
+    if (file.size > maxSize) {
+      showToast("error", "File too large", "File size must be less than 5GB");
+      return;
+    }
+
+    selectedFile.value = file;
+    showToast(
+      "success",
+      "File selected",
+      `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`,
+    );
+  });
+
   const handleUpload = $(async () => {
     if (!selectedFile.value || !title.value.trim()) {
       message.value = "Please provide a title and select a video file";
@@ -200,7 +274,7 @@ export const VideoUpload = component$(() => {
               if (response.status === 401 || response.status === 403) {
                 console.error(
                   "Authentication failed during upload:",
-                  errorText
+                  errorText,
                 );
                 message.value = "Authentication failed. Please log in again.";
                 messageType.value = "error";
@@ -214,7 +288,7 @@ export const VideoUpload = component$(() => {
               // If it's a server error (5xx), retry
               if (response.status >= 500 && retries > 1) {
                 console.warn(
-                  `Chunk ${chunkIndex + 1} upload failed (${response.status}), retrying... (${retries - 1} attempts left)`
+                  `Chunk ${chunkIndex + 1} upload failed (${response.status}), retrying... (${retries - 1} attempts left)`,
                 );
                 lastError = errorText;
                 retries--;
@@ -233,7 +307,7 @@ export const VideoUpload = component$(() => {
             } catch (jsonError) {
               if (retries > 1) {
                 console.warn(
-                  `Failed to parse chunk ${chunkIndex + 1} response, retrying... (${retries - 1} attempts left)`
+                  `Failed to parse chunk ${chunkIndex + 1} response, retrying... (${retries - 1} attempts left)`,
                 );
                 lastError = "Invalid response format";
                 retries--;
@@ -243,7 +317,7 @@ export const VideoUpload = component$(() => {
 
               console.error(
                 "Failed to parse chunk upload response as JSON:",
-                jsonError
+                jsonError,
               );
               message.value = `Chunk upload failed: Invalid response format`;
               messageType.value = "error";
@@ -255,7 +329,7 @@ export const VideoUpload = component$(() => {
             if (retries > 1) {
               console.warn(
                 `Chunk ${chunkIndex + 1} upload failed with network error, retrying... (${retries - 1} attempts left)`,
-                error
+                error,
               );
               lastError = error;
               retries--;
@@ -273,7 +347,7 @@ export const VideoUpload = component$(() => {
         if (retries === 0) {
           console.error(
             `Failed to upload chunk ${chunkIndex + 1} after all retries:`,
-            lastError
+            lastError,
           );
           message.value = `Failed to upload chunk ${chunkIndex + 1} after retries`;
           messageType.value = "error";
@@ -310,7 +384,7 @@ export const VideoUpload = component$(() => {
         } catch (textError) {
           console.warn(
             "Could not read assembly error response text:",
-            textError
+            textError,
           );
           errorText = `HTTP ${assembleResponse.status} ${assembleResponse.statusText}`;
         }
@@ -342,11 +416,11 @@ export const VideoUpload = component$(() => {
         selectedThumbnail.value = null;
         thumbnailPreview.value = "";
         const fileInput = document.getElementById(
-          "video-file"
+          "video-file",
         ) as HTMLInputElement;
         if (fileInput) fileInput.value = "";
         const thumbnailInput = document.getElementById(
-          "video-thumbnail"
+          "video-thumbnail",
         ) as HTMLInputElement;
         if (thumbnailInput) thumbnailInput.value = "";
 
@@ -402,6 +476,30 @@ export const VideoUpload = component$(() => {
               class="form-input"
               maxLength={100}
             />
+            <small class="char-count">
+              {title.value.length}/100 characters
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="video-description">
+              <span class="label-icon">
+                <LuInfo />
+              </span>
+              Description (Optional)
+            </label>
+            <textarea
+              id="video-description"
+              bind:value={description}
+              placeholder="Add a description for your video"
+              disabled={isUploading.value}
+              class="form-input"
+              maxLength={500}
+              rows={4}
+            />
+            <small class="char-count">
+              {description.value.length}/500 characters
+            </small>
           </div>
 
           <div class="form-group">
@@ -411,6 +509,41 @@ export const VideoUpload = component$(() => {
               </span>
               Video File
             </label>
+
+            {/* Drag and Drop Zone */}
+            <div
+              class={`drop-zone ${isDragging.value ? "dragging" : ""} ${selectedFile.value ? "has-file" : ""}`}
+              onDragEnter$={handleDragEnter$}
+              onDragLeave$={handleDragLeave$}
+              onDragOver$={handleDragOver$}
+              onDrop$={handleDrop$}
+            >
+              {selectedFile.value ? (
+                <div class="drop-zone-content">
+                  <LuCheckCircle class="drop-icon success" />
+                  <p class="drop-text">{selectedFile.value.name}</p>
+                  <p class="drop-subtext">
+                    {(selectedFile.value.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  <label for="video-file" class="drop-button">
+                    Change File
+                  </label>
+                </div>
+              ) : (
+                <div class="drop-zone-content">
+                  <LuUpload class="drop-icon" />
+                  <p class="drop-text">
+                    {isDragging.value
+                      ? "Drop video here"
+                      : "Drag & drop video or"}
+                  </p>
+                  <label for="video-file" class="drop-button">
+                    Browse Files
+                  </label>
+                </div>
+              )}
+            </div>
+
             <input
               id="video-file"
               type="file"
@@ -418,6 +551,7 @@ export const VideoUpload = component$(() => {
               onChange$={handleFileSelect}
               disabled={isUploading.value}
               class="form-input file-input"
+              style="display: none;"
             />
             <small class="file-info">
               <LuBarChart /> Supported formats: MP4, AVI, MOV, MKV, WebM |

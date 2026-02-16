@@ -5,6 +5,7 @@ import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { CONFIG } from "../constants";
+import { atomicWriteJSON, safeReadJSON, withFileLock } from "../atomic-file-ops";
 
 const execAsync = promisify(exec);
 
@@ -100,6 +101,7 @@ setupFFmpegPath()
 export interface VideoMetadata {
   id: string;
   title: string;
+  description?: string;
   duration: number;
   resolution: string;
   fileSize: number;
@@ -108,6 +110,7 @@ export interface VideoMetadata {
   thumbnail?: string;
   status?: "processing" | "completed" | "failed";
   processingProgress?: number;
+  updatedAt?: number;
 }
 
 export interface ProcessingStatus {
@@ -529,43 +532,34 @@ export class VideoProcessor {
   static async saveVideoMetadata(metadata: VideoMetadata) {
     const metadataPath = path.join(this.videosDir, "metadata.json");
 
-    let existingData: VideoMetadata[] = [];
-    try {
-      const data = await fs.readFile(metadataPath, "utf-8");
-      existingData = JSON.parse(data);
-    } catch {
-      // File doesn't exist yet
-    }
-
-    existingData.push(metadata);
-    await fs.writeFile(metadataPath, JSON.stringify(existingData, null, 2));
+    // Use file locking and atomic write to prevent corruption
+    await withFileLock(metadataPath, async () => {
+      const existingData = await safeReadJSON<VideoMetadata[]>(metadataPath, []);
+      existingData.push(metadata);
+      await atomicWriteJSON(metadataPath, existingData);
+    });
   }
 
   static async getVideoMetadata(): Promise<VideoMetadata[]> {
     const metadataPath = path.join(this.videosDir, "metadata.json");
 
-    try {
-      const data = await fs.readFile(metadataPath, "utf-8");
-      const metadata = JSON.parse(data);
-      
-      // Validate that HLS files still exist and mark videos as available
-      const validatedMetadata = await Promise.all(
-        metadata.map(async (video: VideoMetadata) => {
-          try {
-            const hlsPath = path.join(process.cwd(), "public", video.hlsPath);
-            await fs.access(hlsPath);
-            return { ...video, status: "completed" as const };
-          } catch {
-            // Mark as failed if HLS files are missing
-            return { ...video, status: "failed" as const };
-          }
-        })
-      );
-      
-      return validatedMetadata;
-    } catch {
-      return [];
-    }
+    const metadata = await safeReadJSON<VideoMetadata[]>(metadataPath, []);
+    
+    // Validate that HLS files still exist and mark videos as available
+    const validatedMetadata = await Promise.all(
+      metadata.map(async (video: VideoMetadata) => {
+        try {
+          const hlsPath = path.join(process.cwd(), "public", video.hlsPath);
+          await fs.access(hlsPath);
+          return { ...video, status: "completed" as const };
+        } catch {
+          // Mark as failed if HLS files are missing
+          return { ...video, status: "failed" as const };
+        }
+      })
+    );
+    
+    return validatedMetadata;
   }
 
   static async deleteVideo(videoId: string): Promise<boolean> {

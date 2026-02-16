@@ -4,30 +4,61 @@ import {
   ADMIN_COOKIE_NAME,
   COOKIE_OPTIONS,
 } from "~/lib/auth";
+import {
+  rateLimiters,
+  getClientIP,
+  createRateLimitHeaders,
+} from "~/lib/rate-limiter";
+import { ErrorMessages, logError, createErrorResponse } from "~/lib/errors";
 
-export const onPost: RequestHandler = async ({ request, json, cookie }) => {
+export const onPost: RequestHandler = async ({
+  request,
+  json,
+  cookie,
+  headers,
+}) => {
+  let username: string | undefined;
+
   try {
-    const { username, password } = await request.json();
+    // Apply rate limiting for login attempts
+    const clientIP = getClientIP(headers);
+    const rateLimitHeaders = createRateLimitHeaders(
+      rateLimiters.login,
+      clientIP,
+    );
+
+    if (!rateLimiters.login.check(clientIP)) {
+      // Set rate limit headers
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        headers.set(key, value);
+      });
+
+      json(429, createErrorResponse(ErrorMessages.AUTH.RATE_LIMIT));
+      return;
+    }
+
+    const body = await request.json();
+    username = body.username;
+    const password = body.password;
 
     if (!username || !password) {
-      json(400, {
-        success: false,
-        message: "Username and password are required",
-      });
+      json(
+        400,
+        createErrorResponse(
+          ErrorMessages.VALIDATION.MISSING_FIELD("Username and password"),
+        ),
+      );
       return;
     }
 
     // Verify admin credentials
     const isValid = await AdminAuthService.verifyAdminCredentials(
       username.trim(),
-      password
+      password,
     );
 
     if (!isValid) {
-      json(401, {
-        success: false,
-        message: "Invalid admin credentials",
-      });
+      json(401, createErrorResponse(ErrorMessages.AUTH.INVALID_CREDENTIALS));
       return;
     }
 
@@ -42,16 +73,20 @@ export const onPost: RequestHandler = async ({ request, json, cookie }) => {
 
     json(200, {
       success: true,
-      message: "Admin login successful",
+      message: "Login successful! Welcome back.",
       user: AdminAuthService.getAdminUser(),
     });
     return;
   } catch (error) {
-    console.error("Admin login error:", error);
-    json(500, {
-      success: false,
-      message: "Login failed",
+    logError("Admin Login", error, {
+      username: username?.substring(0, 3) + "***",
     });
+    json(
+      500,
+      createErrorResponse(
+        "Login failed due to a server error. Please try again.",
+      ),
+    );
     return;
   }
 };
